@@ -9,9 +9,7 @@ export async function GET() {
 
   const periods = await prisma.period.findMany({
     orderBy: { createdAt: "desc" },
-    include: {
-      _count: { select: { evaluations: true, finalScores: true } },
-    },
+    include: { _count: { select: { evaluations: true } } },
   });
 
   return NextResponse.json({ periods });
@@ -28,10 +26,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "All fields are required." }, { status: 400 });
   }
 
-  // Create period with default role×criterion configs (all active, equal weights)
-  const criteria = await prisma.criterion.findMany();
-  const roles = ["PO", "CL", "AC"] as const;
-
+  // Step 1: Create period
   const period = await prisma.period.create({
     data: {
       name,
@@ -40,20 +35,28 @@ export async function POST(req: NextRequest) {
       scoringDeadline: new Date(scoringDeadline),
       calibrationDeadline: new Date(calibrationDeadline),
       status: "DRAFT",
-      roleCriterionConfigs: {
-        create: roles.flatMap((role) =>
-          criteria.map((c) => ({
-            role,
-            criterionId: c.id,
-            isActive: true,
-            weight: parseFloat((100 / criteria.length).toFixed(4)),
-          }))
-        ),
-      },
-      scoringConstraints: {
-        create: roles.map((role) => ({ role, mode: "M1_FREE" })),
-      },
     },
+  });
+
+  // Step 2: Create role×criterion configs
+  const criteria = await prisma.criterion.findMany();
+  const roles = ["PO", "CL", "AC"] as const;
+
+  await prisma.roleCriterionConfig.createMany({
+    data: roles.flatMap((role) =>
+      criteria.map((c) => ({
+        periodId: period.id,
+        role,
+        criterionId: c.id,
+        isActive: true,
+        weight: parseFloat((100 / criteria.length).toFixed(4)),
+      }))
+    ),
+  });
+
+  // Step 3: Create scoring constraints
+  await prisma.scoringConstraintConfig.createMany({
+    data: roles.map((role) => ({ periodId: period.id, role, mode: "M1_FREE" as const })),
   });
 
   return NextResponse.json({ period }, { status: 201 });
