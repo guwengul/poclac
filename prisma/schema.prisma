@@ -66,10 +66,12 @@ model Person {
   evaluateeAssignments  EvaluatorAssignment[] @relation("Evaluatee")
   evaluationsGiven      Evaluation[]          @relation("EvaluatorEvals")
   evaluationsReceived   Evaluation[]          @relation("EvaluateeEvals")
-  finalScoresLocked     FinalScore[]          @relation("LockedByTL")
-  finalScoresReceived   FinalScore[]          @relation("EvaluateeFinalScore")
-  distinctions          Distinction[]
-  auditLogs             AuditLog[]
+  finalScoresLocked       FinalScore[]          @relation("LockedByTL")
+  finalScoresReceived     FinalScore[]          @relation("EvaluateeFinalScore")
+  distinctionsReceived    Distinction[]         @relation("DistinctionEvaluatee")
+  distinctionsMarked      Distinction[]         @relation("DistinctionMarkedBy")
+  distinctionsApproved    Distinction[]         @relation("DistinctionApprovedBy")
+  auditLogs               AuditLog[]
 }
 
 model Tribe {
@@ -262,9 +264,9 @@ model Distinction {
   updatedAt      DateTime                  @updatedAt
 
   period     Period  @relation(fields: [periodId], references: [id])
-  evaluatee  Person  @relation(fields: [evaluateeId], references: [id])
-  markedBy   Person? @relation(fields: [markedById], references: [id], map: "Distinction_markedBy_fkey")
-  approvedBy Person? @relation(fields: [approvedById], references: [id], map: "Distinction_approvedBy_fkey")
+  evaluatee  Person  @relation("DistinctionEvaluatee", fields: [evaluateeId], references: [id])
+  markedBy   Person? @relation("DistinctionMarkedBy", fields: [markedById], references: [id])
+  approvedBy Person? @relation("DistinctionApprovedBy", fields: [approvedById], references: [id])
 
   @@unique([periodId, evaluateeId])
 }
