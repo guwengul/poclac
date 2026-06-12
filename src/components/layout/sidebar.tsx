@@ -12,6 +12,8 @@ import {
   BarChart3,
   Settings,
   LogOut,
+  Building2,
+  Users,
 } from "lucide-react";
 
 const navItems = [
@@ -19,7 +21,11 @@ const navItems = [
   { href: "/evaluations", label: "My Evaluations", icon: ClipboardList },
   { href: "/calibration", label: "Calibration", icon: Star },
   { href: "/reports", label: "Reports", icon: BarChart3 },
-  { href: "/admin", label: "Admin", icon: Settings },
+];
+
+const adminItems = [
+  { href: "/admin/users", label: "Users", icon: Users },
+  { href: "/admin/organization", label: "Organization", icon: Building2 },
 ];
 
 export function Sidebar({ userEmail }: { userEmail: string }) {
@@ -47,17 +53,27 @@ export function Sidebar({ userEmail }: { userEmail: string }) {
         {navItems.map(({ href, label, icon: Icon }) => {
           const active = pathname === href || pathname.startsWith(href + "/");
           return (
-            <Link
-              key={href}
-              href={href}
-              className={cn(
-                "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
-                active
-                  ? "text-white"
-                  : "text-white/60 hover:text-white hover:bg-white/10"
-              )}
-              style={active ? { background: "var(--sidebar-accent)" } : {}}
-            >
+            <Link key={href} href={href}
+              className={cn("flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
+                active ? "text-white" : "text-white/60 hover:text-white hover:bg-white/10")}
+              style={active ? { background: "var(--sidebar-accent)" } : {}}>
+              <Icon className="w-4 h-4 flex-shrink-0" />
+              {label}
+            </Link>
+          );
+        })}
+
+        <div className="pt-3 pb-1 px-3">
+          <p className="text-xs font-semibold text-white/30 uppercase tracking-wider">Admin</p>
+        </div>
+
+        {adminItems.map(({ href, label, icon: Icon }) => {
+          const active = pathname === href || pathname.startsWith(href + "/");
+          return (
+            <Link key={href} href={href}
+              className={cn("flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
+                active ? "text-white" : "text-white/60 hover:text-white hover:bg-white/10")}
+              style={active ? { background: "var(--sidebar-accent)" } : {}}>
               <Icon className="w-4 h-4 flex-shrink-0" />
               {label}
             </Link>
