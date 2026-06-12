@@ -1,0 +1,286 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ─── Enums ────────────────────────────────────────────────────────────────────
+
+enum EvaluatorRole {
+  PO
+  CL
+  AC
+}
+
+enum PeriodStatus {
+  DRAFT
+  SCORING_OPEN
+  CALIBRATION
+  DISTINCTION
+  CLOSED
+}
+
+enum EvaluationStatus {
+  DRAFT
+  SUBMITTED
+}
+
+enum DistinctionType {
+  TOP10
+  TOP20
+}
+
+enum DistinctionApprovalStatus {
+  PENDING
+  APPROVED
+  LOCKED
+}
+
+enum ConstraintMode {
+  M1_FREE
+  M2_AVERAGE_CAP
+  M3_SCORE_BUDGET
+  M4_TOP_QUOTA
+  M5_SOFT_GUIDANCE
+  M6_NORMALIZATION
+}
+
+// ─── Organization ─────────────────────────────────────────────────────────────
+
+model Person {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  chapter   String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tribeLeads            Tribe[]               @relation("TribeLead")
+  squadMemberships      SquadMembership[]
+  evaluatorAssignments  EvaluatorAssignment[] @relation("Evaluator")
+  evaluateeAssignments  EvaluatorAssignment[] @relation("Evaluatee")
+  evaluationsGiven      Evaluation[]          @relation("EvaluatorEvals")
+  evaluationsReceived   Evaluation[]          @relation("EvaluateeEvals")
+  finalScoresLocked     FinalScore[]          @relation("LockedByTL")
+  finalScoresReceived   FinalScore[]          @relation("EvaluateeFinalScore")
+  distinctions          Distinction[]
+  auditLogs             AuditLog[]
+}
+
+model Tribe {
+  id          String   @id @default(cuid())
+  name        String
+  tribeLeadId String
+  tribeLead   Person   @relation("TribeLead", fields: [tribeLeadId], references: [id])
+  createdAt   DateTime @default(now())
+
+  squads Squad[]
+}
+
+model Squad {
+  id        String   @id @default(cuid())
+  name      String
+  tribeId   String
+  tribe     Tribe    @relation(fields: [tribeId], references: [id])
+  createdAt DateTime @default(now())
+
+  memberships SquadMembership[]
+}
+
+model SquadMembership {
+  id       String @id @default(cuid())
+  personId String
+  squadId  String
+  periodId String
+
+  person Person @relation(fields: [personId], references: [id])
+  squad  Squad  @relation(fields: [squadId], references: [id])
+  period Period @relation(fields: [periodId], references: [id])
+
+  @@unique([personId, squadId, periodId])
+}
+
+// ─── Period & Configuration ───────────────────────────────────────────────────
+
+model Period {
+  id                   String       @id @default(cuid())
+  name                 String
+  status               PeriodStatus @default(DRAFT)
+  scoringDeadline      DateTime
+  calibrationDeadline  DateTime
+  startDate            DateTime
+  endDate              DateTime
+  createdAt            DateTime     @default(now())
+  updatedAt            DateTime     @updatedAt
+
+  squadMemberships      SquadMembership[]
+  evaluatorAssignments  EvaluatorAssignment[]
+  roleCriterionConfigs  RoleCriterionConfig[]
+  roleWeightConfigs     RoleWeightConfig[]
+  scoringConstraints    ScoringConstraintConfig[]
+  evaluations           Evaluation[]
+  finalScores           FinalScore[]
+  distinctions          Distinction[]
+}
+
+// 3 fixed criteria — seeded once
+model Criterion {
+  id   String @id @default(cuid())
+  code String @unique // K1, K2, K3
+  name String
+
+  roleCriterionConfigs RoleCriterionConfig[]
+  evaluationScores     EvaluationScore[]
+}
+
+model RoleCriterionConfig {
+  id          String        @id @default(cuid())
+  periodId    String
+  role        EvaluatorRole
+  criterionId String
+  isActive    Boolean       @default(true)
+  weight      Float         // 0-100 (percentage); active weights per role must sum to 100
+
+  period    Period    @relation(fields: [periodId], references: [id])
+  criterion Criterion @relation(fields: [criterionId], references: [id])
+
+  @@unique([periodId, role, criterionId])
+}
+
+model RoleWeightConfig {
+  id          String        @id @default(cuid())
+  periodId    String
+  role        EvaluatorRole
+  upperWeight Float         // optional role-level weight for suggestion score
+
+  period Period @relation(fields: [periodId], references: [id])
+
+  @@unique([periodId, role])
+}
+
+model ScoringConstraintConfig {
+  id               String         @id @default(cuid())
+  periodId         String
+  role             EvaluatorRole
+  mode             ConstraintMode @default(M1_FREE)
+  averageCap       Float?         // M2
+  targetAverage    Float?         // M3
+  quotaPercent     Float?         // M4
+  smallTeamThreshold Int?         // M4 auto-disable threshold
+
+  period Period @relation(fields: [periodId], references: [id])
+
+  @@unique([periodId, role])
+}
+
+// ─── Assignments & Evaluations ────────────────────────────────────────────────
+
+model EvaluatorAssignment {
+  id          String        @id @default(cuid())
+  periodId    String
+  evaluateeId String
+  evaluatorId String
+  role        EvaluatorRole
+
+  period    Period @relation(fields: [periodId], references: [id])
+  evaluatee Person @relation("Evaluatee", fields: [evaluateeId], references: [id])
+  evaluator Person @relation("Evaluator", fields: [evaluatorId], references: [id])
+
+  @@unique([periodId, evaluateeId, role])
+}
+
+model Evaluation {
+  id           String           @id @default(cuid())
+  periodId     String
+  evaluateeId  String
+  evaluatorId  String
+  role         EvaluatorRole
+  status       EvaluationStatus @default(DRAFT)
+  submittedAt  DateTime?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  period    Period            @relation(fields: [periodId], references: [id])
+  evaluatee Person            @relation("EvaluateeEvals", fields: [evaluateeId], references: [id])
+  evaluator Person            @relation("EvaluatorEvals", fields: [evaluatorId], references: [id])
+  scores    EvaluationScore[]
+
+  // evaluatorId != evaluateeId enforced at application layer + DB check below
+  @@unique([periodId, evaluateeId, role])
+}
+
+model EvaluationScore {
+  id           String @id @default(cuid())
+  evaluationId String
+  criterionId  String
+  score        Int    // CHECK: 1 <= score <= 5
+  comment      String?
+
+  evaluation Evaluation @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
+  criterion  Criterion  @relation(fields: [criterionId], references: [id])
+
+  @@unique([evaluationId, criterionId])
+}
+
+// ─── Calibration & Final Score ────────────────────────────────────────────────
+
+model FinalScore {
+  id              String    @id @default(cuid())
+  periodId        String
+  evaluateeId     String
+  suggestionScore Float?
+  finalScore      Float?
+  justification   String?   // required when finalScore differs from suggestionScore
+  lockedById      String?
+  lockedAt        DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  period     Period  @relation(fields: [periodId], references: [id])
+  evaluatee  Person  @relation("EvaluateeFinalScore", fields: [evaluateeId], references: [id])
+  lockedBy   Person? @relation("LockedByTL", fields: [lockedById], references: [id])
+
+  @@unique([periodId, evaluateeId])
+}
+
+// ─── Distinction ──────────────────────────────────────────────────────────────
+
+model Distinction {
+  id             String                    @id @default(cuid())
+  periodId       String
+  evaluateeId    String
+  type           DistinctionType
+  approvalStatus DistinctionApprovalStatus @default(PENDING)
+  markedById     String?
+  approvedById   String?
+  createdAt      DateTime                  @default(now())
+  updatedAt      DateTime                  @updatedAt
+
+  period     Period  @relation(fields: [periodId], references: [id])
+  evaluatee  Person  @relation(fields: [evaluateeId], references: [id])
+  markedBy   Person? @relation(fields: [markedById], references: [id], map: "Distinction_markedBy_fkey")
+  approvedBy Person? @relation(fields: [approvedById], references: [id], map: "Distinction_approvedBy_fkey")
+
+  @@unique([periodId, evaluateeId])
+}
+
+// ─── Audit Log ────────────────────────────────────────────────────────────────
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  occurredAt DateTime @default(now())
+  userId     String
+  action     String   // e.g. SCORE_SUBMITTED, FINAL_SCORE_LOCKED, DISTINCTION_MARKED
+  entity     String   // e.g. Evaluation, FinalScore
+  entityId   String
+  oldValue   Json?
+  newValue   Json?
+  justification String?
+
+  user Person @relation(fields: [userId], references: [id])
+}
