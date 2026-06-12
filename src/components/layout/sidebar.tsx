@@ -10,10 +10,10 @@ import {
   ClipboardList,
   Star,
   BarChart3,
-  Settings,
   LogOut,
   Building2,
   Users,
+  CalendarRange,
 } from "lucide-react";
 
 const navItems = [
@@ -26,6 +26,7 @@ const navItems = [
 const adminItems = [
   { href: "/admin/users", label: "Users", icon: Users },
   { href: "/admin/organization", label: "Organization", icon: Building2 },
+  { href: "/admin/periods", label: "Periods", icon: CalendarRange },
 ];
 
 export function Sidebar({ userEmail }: { userEmail: string }) {
