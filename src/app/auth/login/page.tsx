@@ -21,7 +21,7 @@ export default function LoginPage() {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
 
     if (error) {
-      setError("E-posta veya şifre hatalı.");
+      setError("Invalid email or password.");
       setLoading(false);
       return;
     }
@@ -31,38 +31,39 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+    <div className="min-h-screen flex items-center justify-center" style={{ background: "var(--background)" }}>
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-10 w-full max-w-sm">
+        {/* Header */}
         <div className="mb-8 text-center">
+          <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl mb-3" style={{ background: "var(--primary)" }}>
+            <span className="text-white font-bold text-lg">P</span>
+          </div>
           <h1 className="text-2xl font-bold text-gray-900">Poclac</h1>
-          <p className="text-sm text-gray-500 mt-1">Performans Değerlendirme Platformu</p>
+          <p className="text-sm text-gray-500 mt-1">Performance Evaluation Platform</p>
         </div>
 
         <form onSubmit={handleLogin} className="flex flex-col gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              E-posta
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-gray-500 focus:ring-1 focus:ring-gray-500"
-              placeholder="ornek@sirket.com"
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:ring-2 transition-all"
+              style={{ "--tw-ring-color": "var(--primary)" } as React.CSSProperties}
+              placeholder="you@company.com"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Şifre
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-gray-500 focus:ring-1 focus:ring-gray-500"
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:ring-2 transition-all"
               placeholder="••••••••"
             />
           </div>
@@ -73,10 +74,15 @@ export default function LoginPage() {
             </p>
           )}
 
-          <Button type="submit" className="w-full mt-1" disabled={loading}>
-            {loading ? "Giriş yapılıyor..." : "Giriş Yap"}
+          <Button type="submit" className="w-full mt-1" disabled={loading}
+            style={{ background: "var(--primary)" }}>
+            {loading ? "Signing in..." : "Sign In"}
           </Button>
         </form>
+
+        <p className="text-xs text-center text-gray-400 mt-6">
+          Access restricted to authorized personnel only.
+        </p>
       </div>
     </div>
   );

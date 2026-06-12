@@ -17,8 +17,8 @@ export default async function UsersPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-gray-900 mb-1">Kullanıcı Yönetimi</h1>
-      <p className="text-sm text-gray-500 mb-8">Sisteme kullanıcı ekle ve yönet.</p>
+      <h1 className="text-2xl font-bold text-gray-900 mb-1">User Management</h1>
+      <p className="text-sm text-gray-500 mb-8">Add and manage platform users.</p>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-1">
@@ -29,17 +29,17 @@ export default async function UsersPage() {
           <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
             <div className="px-5 py-4 border-b border-gray-100">
               <h2 className="text-sm font-semibold text-gray-700">
-                Kullanıcılar ({people.length})
+                Users ({people.length})
               </h2>
             </div>
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-100">
-                  <th className="text-left px-5 py-3 font-medium text-gray-600">Ad</th>
-                  <th className="text-left px-5 py-3 font-medium text-gray-600">E-posta</th>
+                  <th className="text-left px-5 py-3 font-medium text-gray-600">Name</th>
+                  <th className="text-left px-5 py-3 font-medium text-gray-600">Email</th>
                   <th className="text-left px-5 py-3 font-medium text-gray-600">Chapter</th>
-                  <th className="text-left px-5 py-3 font-medium text-gray-600">Rol</th>
-                  <th className="text-left px-5 py-3 font-medium text-gray-600">Durum</th>
+                  <th className="text-left px-5 py-3 font-medium text-gray-600">Role</th>
+                  <th className="text-left px-5 py-3 font-medium text-gray-600">Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -55,18 +55,18 @@ export default async function UsersPage() {
                         </span>
                       ) : (
                         <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600">
-                          Kullanıcı
+                          User
                         </span>
                       )}
                     </td>
                     <td className="px-5 py-3">
                       {p.isActive ? (
                         <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700">
-                          Aktif
+                          Active
                         </span>
                       ) : (
                         <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-500">
-                          Pasif
+                          Inactive
                         </span>
                       )}
                     </td>
@@ -75,7 +75,7 @@ export default async function UsersPage() {
                 {people.length === 0 && (
                   <tr>
                     <td colSpan={5} className="px-5 py-8 text-center text-gray-400 text-sm">
-                      Henüz kullanıcı eklenmemiş.
+                      No users added yet.
                     </td>
                   </tr>
                 )}

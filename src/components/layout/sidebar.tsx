@@ -8,19 +8,18 @@ import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
   ClipboardList,
-  Users,
+  Star,
   BarChart3,
   Settings,
   LogOut,
-  Star,
 } from "lucide-react";
 
 const navItems = [
-  { href: "/dashboard", label: "Ana Sayfa", icon: LayoutDashboard },
-  { href: "/evaluations", label: "Değerlendirmelerim", icon: ClipboardList },
-  { href: "/calibration", label: "Kalibrasyon", icon: Star },
-  { href: "/reports", label: "Raporlar", icon: BarChart3 },
-  { href: "/admin", label: "Yönetim", icon: Settings },
+  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/evaluations", label: "My Evaluations", icon: ClipboardList },
+  { href: "/calibration", label: "Calibration", icon: Star },
+  { href: "/reports", label: "Reports", icon: BarChart3 },
+  { href: "/admin", label: "Admin", icon: Settings },
 ];
 
 export function Sidebar({ userEmail }: { userEmail: string }) {
@@ -34,39 +33,49 @@ export function Sidebar({ userEmail }: { userEmail: string }) {
   }
 
   return (
-    <aside className="w-56 bg-white border-r border-gray-200 flex flex-col">
-      <div className="px-5 py-5 border-b border-gray-100">
-        <span className="text-lg font-bold text-gray-900">Poclac</span>
+    <aside className="w-56 flex flex-col" style={{ background: "var(--sidebar)" }}>
+      {/* Logo */}
+      <div className="px-5 py-5 border-b border-white/10">
+        <span className="text-lg font-bold text-white tracking-tight">Poclac</span>
+        <p className="text-xs mt-0.5" style={{ color: "var(--sidebar-foreground)", opacity: 0.6 }}>
+          Performance Platform
+        </p>
       </div>
 
-      <nav className="flex-1 px-3 py-4 space-y-1">
-        {navItems.map(({ href, label, icon: Icon }) => (
-          <Link
-            key={href}
-            href={href}
-            className={cn(
-              "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
-              pathname === href || pathname.startsWith(href + "/")
-                ? "bg-gray-100 text-gray-900"
-                : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-            )}
-          >
-            <Icon className="w-4 h-4" />
-            {label}
-          </Link>
-        ))}
+      {/* Nav */}
+      <nav className="flex-1 px-3 py-4 space-y-0.5">
+        {navItems.map(({ href, label, icon: Icon }) => {
+          const active = pathname === href || pathname.startsWith(href + "/");
+          return (
+            <Link
+              key={href}
+              href={href}
+              className={cn(
+                "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
+                active
+                  ? "text-white"
+                  : "text-white/60 hover:text-white hover:bg-white/10"
+              )}
+              style={active ? { background: "var(--sidebar-accent)" } : {}}
+            >
+              <Icon className="w-4 h-4 flex-shrink-0" />
+              {label}
+            </Link>
+          );
+        })}
       </nav>
 
-      <div className="px-3 py-4 border-t border-gray-100">
-        <div className="px-3 py-2 mb-1">
-          <p className="text-xs text-gray-500 truncate">{userEmail}</p>
+      {/* User */}
+      <div className="px-3 py-4 border-t border-white/10">
+        <div className="px-3 py-1.5 mb-1">
+          <p className="text-xs text-white/50 truncate">{userEmail}</p>
         </div>
         <button
           onClick={signOut}
-          className="flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors"
+          className="flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm font-medium text-white/60 hover:text-white hover:bg-white/10 transition-colors"
         >
           <LogOut className="w-4 h-4" />
-          Çıkış Yap
+          Sign Out
         </button>
       </div>
     </aside>

@@ -11,14 +11,16 @@ export default async function DashboardPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-gray-900 mb-1">Ana Sayfa</h1>
+      <h1 className="text-2xl font-bold text-gray-900 mb-1">
+        Welcome{person ? `, ${person.name}` : ""}
+      </h1>
       <p className="text-sm text-gray-500 mb-8">
-        Hoşgeldiniz{person ? `, ${person.name}` : ""}.
+        Performance Evaluation &amp; Calibration Platform
       </p>
 
       {!person && (
         <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-800">
-          Hesabınız henüz sisteme eklenmemiş. Sistem yöneticisiyle iletişime geçin.
+          Your account has not been added to the system yet. Please contact your administrator.
         </div>
       )}
     </div>
