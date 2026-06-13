@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-type Criterion = { id: string; code: string; name: string; description: string | null };
+type Criterion = { id: string; code: string; name: string; description: string | null; weight: number | null };
 
 const SCORE_LABELS: Record<number, string> = {
   1: "Needs Improvement",
@@ -133,7 +133,12 @@ export function ScoringForm({
         {criteria.map((c) => (
           <div key={c.id} className="px-5 py-5">
             <div className="mb-3">
-              <p className="font-semibold text-gray-900">{c.code} — {c.name}</p>
+              <div className="flex items-baseline gap-2">
+                <p className="font-semibold text-gray-900">{c.code} — {c.name}</p>
+                {c.weight !== null && (
+                  <span className="text-xs text-purple-500 font-medium">{c.weight}%</span>
+                )}
+              </div>
               {c.description && <p className="text-xs text-gray-500 mt-0.5">{c.description}</p>}
             </div>
             <div className="flex gap-2 mb-3">

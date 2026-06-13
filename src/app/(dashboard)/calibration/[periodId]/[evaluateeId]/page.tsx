@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { CalibrationForm } from "./calibration-form";
+import { calcSuggestionScore } from "@/lib/scoring";
 
 const ROLE_LABELS: Record<string, string> = { PO: "Product Owner", CL: "Chapter Lead", AC: "Agile Coach" };
 const SCORE_LABELS: Record<number, string> = {
@@ -16,7 +17,7 @@ export default async function CalibrationPersonPage({
 
   const { periodId, evaluateeId } = await params;
 
-  const [period, evaluatee, evaluations, criteria, finalScore] = await Promise.all([
+  const [period, evaluatee, evaluations, criteria, finalScore, suggestionScore] = await Promise.all([
     prisma.period.findUnique({ where: { id: periodId } }),
     prisma.person.findUnique({
       where: { id: evaluateeId },
@@ -35,19 +36,10 @@ export default async function CalibrationPersonPage({
     }),
     prisma.criterion.findMany({ where: { isActive: true }, orderBy: { code: "asc" } }),
     prisma.finalScore.findUnique({ where: { periodId_evaluateeId: { periodId, evaluateeId } } }),
+    calcSuggestionScore(periodId, evaluateeId),
   ]);
 
   if (!period || !evaluatee) notFound();
-
-  // Calculate suggestion score: average of all submitted scores
-  const submittedEvals = evaluations.filter(e => e.status === "SUBMITTED");
-  let suggestionScore: number | null = null;
-  if (submittedEvals.length > 0) {
-    const allScores = submittedEvals.flatMap(e => e.scores.map(s => s.score));
-    if (allScores.length > 0) {
-      suggestionScore = allScores.reduce((a, b) => a + b, 0) / allScores.length;
-    }
-  }
 
   return (
     <div className="max-w-4xl">

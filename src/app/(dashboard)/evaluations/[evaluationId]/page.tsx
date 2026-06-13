@@ -25,10 +25,27 @@ export default async function EvaluationPage({
   if (!evaluation) notFound();
   if (evaluation.evaluatorId !== person.id) redirect("/evaluations");
 
-  const criteria = await prisma.criterion.findMany({
+  // Only fetch criteria active for this role in this period
+  const criterionConfigs = await prisma.roleCriterionConfig.findMany({
+    where: {
+      periodId: evaluation.periodId,
+      role: evaluation.role,
+      isActive: true,
+      weight: { gt: 0 },
+    },
+    include: { criterion: true },
+    orderBy: { criterion: { code: "asc" } },
+  });
+
+  // Fall back to all active criteria if no weights configured yet
+  const allCriteria = await prisma.criterion.findMany({
     where: { isActive: true },
     orderBy: { code: "asc" },
   });
+
+  const criteria = criterionConfigs.length > 0
+    ? criterionConfigs.map(c => ({ ...c.criterion, weight: c.weight }))
+    : allCriteria.map(c => ({ ...c, weight: null }));
 
   const ROLE_LABELS: Record<string, string> = { PO: "Product Owner", CL: "Chapter Lead", AC: "Agile Coach" };
 

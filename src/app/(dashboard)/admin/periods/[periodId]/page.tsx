@@ -4,6 +4,7 @@ import { redirect, notFound } from "next/navigation";
 import { AssignmentManager } from "./assignment-manager";
 import { PeriodStatusManager } from "./period-status-manager";
 import { TribeActivation } from "./tribe-activation";
+import { WeightConfig } from "./weight-config";
 
 export default async function PeriodDetailPage({
   params,
@@ -15,7 +16,7 @@ export default async function PeriodDetailPage({
 
   const { periodId } = await params;
 
-  const [period, people, assignments, tribes] = await Promise.all([
+  const [period, people, assignments, tribes, criteria, roleWeights, criterionWeights] = await Promise.all([
     prisma.period.findUnique({
       where: { id: periodId },
       include: { roleCriterionConfigs: { include: { criterion: true } } },
@@ -42,6 +43,9 @@ export default async function PeriodDetailPage({
         },
       },
     }),
+    prisma.criterion.findMany({ where: { isActive: true }, orderBy: { code: "asc" } }),
+    prisma.roleWeightConfig.findMany({ where: { periodId } }),
+    prisma.roleCriterionConfig.findMany({ where: { periodId } }),
   ]);
 
   if (!period) notFound();
@@ -72,6 +76,15 @@ export default async function PeriodDetailPage({
           tribes={tribesWithPeriod}
           isReadOnly={isReadOnly}
         />
+
+        {auth.isAdmin && (
+          <WeightConfig
+            periodId={periodId}
+            criteria={criteria}
+            initialRoleWeights={roleWeights}
+            initialCriterionWeights={criterionWeights}
+          />
+        )}
 
         <AssignmentManager
           periodId={periodId}
