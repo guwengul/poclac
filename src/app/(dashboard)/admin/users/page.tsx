@@ -2,6 +2,7 @@ import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { AddUserForm } from "./add-user-form";
+import { GrantLoginButton } from "./grant-login-button";
 
 export default async function UsersPage() {
   try { await requireAdmin(); } catch { redirect("/dashboard"); }
@@ -12,7 +13,7 @@ export default async function UsersPage() {
       id: true, email: true, name: true,
       isActive: true, isAdmin: true, hasLogin: true,
       functionalArea: { select: { name: true } },
-      squadMemberships: { select: { squad: { select: { name: true } } }, take: 1 },
+      squad: { select: { name: true } },
     },
   });
 
@@ -40,6 +41,7 @@ export default async function UsersPage() {
                   <th className="text-left px-5 py-3 font-medium text-gray-600">Email</th>
                   <th className="text-left px-5 py-3 font-medium text-gray-600">Area / Squad</th>
                   <th className="text-left px-5 py-3 font-medium text-gray-600">Access</th>
+                  <th className="px-5 py-3" />
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -49,7 +51,7 @@ export default async function UsersPage() {
                     <td className="px-5 py-3 text-gray-500 text-xs">{p.email}</td>
                     <td className="px-5 py-3 text-gray-500 text-xs">
                       {p.functionalArea?.name
-                        ? <span>{p.functionalArea.name}{p.squadMemberships[0] ? ` · ${p.squadMemberships[0].squad.name}` : ""}</span>
+                        ? <span>{p.functionalArea.name}{p.squad ? ` · ${p.squad.name}` : ""}</span>
                         : <span className="text-gray-300 italic">Not assigned</span>}
                     </td>
                     <td className="px-5 py-3">
@@ -61,11 +63,16 @@ export default async function UsersPage() {
                         <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-400">No login</span>
                       )}
                     </td>
+                    <td className="px-5 py-3 text-right">
+                      {!p.hasLogin && !p.isAdmin && (
+                        <GrantLoginButton personId={p.id} personName={p.name} />
+                      )}
+                    </td>
                   </tr>
                 ))}
                 {people.length === 0 && (
                   <tr>
-                    <td colSpan={4} className="px-5 py-8 text-center text-gray-400 text-sm">
+                    <td colSpan={5} className="px-5 py-8 text-center text-gray-400 text-sm">
                       No people added yet.
                     </td>
                   </tr>
