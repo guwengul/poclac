@@ -21,11 +21,7 @@ export default async function CalibrationPeriodPage({
     ? (await prisma.tribePeriod.findMany({ where: { periodId, status: "CALIBRATION" }, select: { tribeId: true } })).map(t => t.tribeId)
     : (await prisma.tribePeriod.findMany({ where: { periodId, status: "CALIBRATION", tribeId: { in: auth.hrTribeIds } }, select: { tribeId: true } })).map(t => t.tribeId);
 
-  const activeTribeIds = auth.isAdmin
-    ? (await prisma.tribePeriod.findMany({ where: { periodId, status: "ACTIVE" }, select: { tribeId: true } })).map(t => t.tribeId)
-    : [];
-
-  const visibleTribeIds = [...calibrationTribeIds, ...activeTribeIds];
+  const visibleTribeIds = calibrationTribeIds;
 
   const [evaluatees, allEvaluations, finalScores, criteria] = await Promise.all([
     prisma.person.findMany({

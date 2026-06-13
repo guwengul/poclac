@@ -18,19 +18,17 @@ export default async function CalibrationPage() {
 
   // For HR Partners: show periods where their tribe is in CALIBRATION
   // For Admins: show all periods in CALIBRATION or SCORING_OPEN
-  let periodIds: string[] | null = null;
-  if (!auth.isAdmin) {
-    const tribePeriods = await prisma.tribePeriod.findMany({
-      where: { tribeId: { in: auth.hrTribeIds }, status: "CALIBRATION" },
-      select: { periodId: true },
-    });
-    periodIds = [...new Set(tribePeriods.map(t => t.periodId))];
-  }
+  const tribePeriods = await prisma.tribePeriod.findMany({
+    where: {
+      status: "CALIBRATION",
+      ...(auth.isAdmin ? {} : { tribeId: { in: auth.hrTribeIds } }),
+    },
+    select: { periodId: true },
+  });
+  const periodIds = [...new Set(tribePeriods.map(t => t.periodId))];
 
   const periods = await prisma.period.findMany({
-    where: auth.isAdmin
-      ? { status: { in: ["SCORING_OPEN", "CALIBRATION"] } }
-      : { id: { in: periodIds ?? [] } },
+    where: { id: { in: periodIds } },
     orderBy: { createdAt: "desc" },
     include: {
       tribePeriods: auth.isAdmin ? false : {
