@@ -12,7 +12,7 @@ export default async function UsersPage() {
 
   const people = await prisma.person.findMany({
     orderBy: { name: "asc" },
-    select: { id: true, email: true, name: true, chapter: true, isActive: true, isAdmin: true },
+    select: { id: true, email: true, name: true, chapter: true, isActive: true, isAdmin: true, hasLogin: true },
   });
 
   return (
@@ -38,7 +38,7 @@ export default async function UsersPage() {
                   <th className="text-left px-5 py-3 font-medium text-gray-600">Name</th>
                   <th className="text-left px-5 py-3 font-medium text-gray-600">Email</th>
                   <th className="text-left px-5 py-3 font-medium text-gray-600">Chapter</th>
-                  <th className="text-left px-5 py-3 font-medium text-gray-600">Role</th>
+                  <th className="text-left px-5 py-3 font-medium text-gray-600">Type</th>
                   <th className="text-left px-5 py-3 font-medium text-gray-600">Status</th>
                 </tr>
               </thead>
@@ -53,9 +53,13 @@ export default async function UsersPage() {
                         <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-700">
                           Admin
                         </span>
-                      ) : (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600">
+                      ) : p.hasLogin ? (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700">
                           User
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-500">
+                          Person Only
                         </span>
                       )}
                     </td>

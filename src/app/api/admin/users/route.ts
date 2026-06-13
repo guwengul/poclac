@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
 
   // Create Person record in DB
   const person = await prisma.person.create({
-    data: { email, name, chapter: chapter ?? null, isAdmin: isAdmin ?? false },
+    data: { email, name, chapter: chapter ?? null, isAdmin: isAdmin ?? false, hasLogin: true },
   });
 
   return NextResponse.json({ person }, { status: 201 });

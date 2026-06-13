@@ -58,6 +58,7 @@ model Person {
   chapter   String?
   isActive  Boolean  @default(true)
   isAdmin   Boolean  @default(false)
+  hasLogin  Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
