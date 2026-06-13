@@ -53,7 +53,6 @@ export function WeightConfig({
       const m: CriterionWeights = {};
       for (const r of ROLES) m[r] = {};
       for (const c of initialCriterionWeights) {
-        if (!criterionWeights?.[c.role]) {}
         m[c.role] = m[c.role] ?? {};
         m[c.role][c.criterionId] = c.weight;
       }
