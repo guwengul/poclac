@@ -1,19 +1,21 @@
-import { requireAdmin } from "@/lib/auth";
+import { requireAdminOrHRPartner } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { redirect, notFound } from "next/navigation";
 import { AssignmentManager } from "./assignment-manager";
 import { PeriodStatusManager } from "./period-status-manager";
+import { TribeActivation } from "./tribe-activation";
 
 export default async function PeriodDetailPage({
   params,
 }: {
   params: Promise<{ periodId: string }>;
 }) {
-  try { await requireAdmin(); } catch { redirect("/dashboard"); }
+  let auth: Awaited<ReturnType<typeof requireAdminOrHRPartner>>;
+  try { auth = await requireAdminOrHRPartner(); } catch { redirect("/dashboard"); }
 
   const { periodId } = await params;
 
-  const [period, people, assignments] = await Promise.all([
+  const [period, people, assignments, tribes] = await Promise.all([
     prisma.period.findUnique({
       where: { id: periodId },
       include: { roleCriterionConfigs: { include: { criterion: true } } },
@@ -30,9 +32,27 @@ export default async function PeriodDetailPage({
         evaluator: { select: { id: true, name: true } },
       },
     }),
+    prisma.tribe.findMany({
+      where: auth.isAdmin ? {} : { id: { in: auth.hrTribeIds } },
+      orderBy: { name: "asc" },
+      include: {
+        tribePeriods: {
+          where: { periodId },
+          select: { id: true, status: true, activatedAt: true },
+        },
+      },
+    }),
   ]);
 
   if (!period) notFound();
+
+  const tribesWithPeriod = tribes.map(t => ({
+    id: t.id,
+    name: t.name,
+    tribePeriod: t.tribePeriods[0] ?? null,
+  }));
+
+  const isReadOnly = period.status !== "DRAFT";
 
   return (
     <div>
@@ -45,7 +65,14 @@ export default async function PeriodDetailPage({
       </p>
 
       <div className="space-y-6">
-        <PeriodStatusManager period={period} />
+        {auth.isAdmin && <PeriodStatusManager period={period} />}
+
+        <TribeActivation
+          periodId={periodId}
+          tribes={tribesWithPeriod}
+          isReadOnly={isReadOnly}
+        />
+
         <AssignmentManager
           periodId={periodId}
           people={people}

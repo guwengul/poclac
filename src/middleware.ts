@@ -25,17 +25,17 @@ export async function middleware(request: NextRequest) {
     }
   );
 
-  const { data: { user } } = await supabase.auth.getUser();
+  // Use getSession() — reads cookie, no network round-trip to Supabase.
+  // Token verification happens server-side in auth helpers (getUser()).
+  const { data: { session } } = await supabase.auth.getSession();
 
   const { pathname } = request.nextUrl;
 
-  // Public routes
   if (pathname.startsWith("/auth")) {
     return supabaseResponse;
   }
 
-  // Redirect unauthenticated users to login
-  if (!user) {
+  if (!session) {
     return NextResponse.redirect(new URL("/auth/login", request.url));
   }
 

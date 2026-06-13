@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { Sidebar } from "@/components/layout/sidebar";
-import { prisma } from "@/lib/prisma";
+import { getCurrentUser } from "@/lib/auth";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient();
@@ -9,13 +9,8 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   if (!user) redirect("/auth/login");
 
-  const person = await prisma.person.findUnique({
-    where: { email: user.email! },
-    select: {
-      isAdmin: true,
-      tribeHRPartners: { select: { id: true }, take: 1 },
-    },
-  });
+  // Reuses the same cached call if page server components also call getCurrentUser()
+  const person = await getCurrentUser();
 
   const isAdmin = person?.isAdmin ?? false;
   const isHRPartner = (person?.tribeHRPartners?.length ?? 0) > 0;
