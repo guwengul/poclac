@@ -34,6 +34,7 @@ const hrPartnerItems = [
   { href: "/admin/periods", label: "Periods", icon: CalendarRange },
   { href: "/admin/organization", label: "Organization", icon: Building2 },
   { href: "/calibration", label: "Calibration", icon: Star },
+  { href: "/reports", label: "Reports", icon: BarChart3 },
 ];
 
 export function Sidebar({ userEmail, isAdmin = false, isHRPartner = false }: {
