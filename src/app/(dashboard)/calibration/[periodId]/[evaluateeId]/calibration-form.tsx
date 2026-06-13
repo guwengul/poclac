@@ -157,7 +157,8 @@ export function CalibrationScoreEditor({
               if (isHidden) return null;
 
               return (
-                <div key={c.id} className="px-5 py-3 flex items-center justify-between gap-4">
+                <div key={c.id} className="px-5 py-3">
+                  <div className="flex items-center justify-between gap-4">
                   <div className="flex items-center gap-2 min-w-0">
                     <span className="text-sm font-medium text-gray-700 shrink-0">{c.code}</span>
                     <span className="text-sm text-gray-500 truncate">{c.name}</span>
@@ -194,6 +195,14 @@ export function CalibrationScoreEditor({
                       <span className="text-xs text-gray-400 w-36 hidden sm:block">{SCORE_LABELS[score]}</span>
                     )}
                   </div>
+                  </div>
+                  {/* Comment */}
+                  {(() => {
+                    const comment = ev.scores.find(s => s.criterionId === c.id)?.comment;
+                    return comment ? (
+                      <p className="mt-1 ml-1 text-xs text-gray-400 italic border-l-2 border-gray-100 pl-2">{comment}</p>
+                    ) : null;
+                  })()}
                 </div>
               );
             })}
