@@ -23,11 +23,18 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
   }
 
-  const { name, tribeLeadId } = await req.json();
+  const { name, tribeLeadId, tribeTechLeadId, tribeHRPartnerId } = await req.json();
   if (!name) {
     return NextResponse.json({ error: "Name is required." }, { status: 400 });
   }
 
-  const tribe = await prisma.tribe.create({ data: { name, tribeLeadId: tribeLeadId ?? null } });
+  const tribe = await prisma.tribe.create({
+    data: {
+      name,
+      tribeLeadId: tribeLeadId ?? null,
+      tribeTechLeadId: tribeTechLeadId ?? null,
+      tribeHRPartnerId: tribeHRPartnerId ?? null,
+    },
+  });
   return NextResponse.json({ tribe }, { status: 201 });
 }

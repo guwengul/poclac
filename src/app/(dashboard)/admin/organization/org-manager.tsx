@@ -460,17 +460,24 @@ function TribeCard({ tribe, people, onRefresh }: { tribe: Tribe; people: Person[
 export function OrgManager({ tribes, people }: { tribes: Tribe[]; people: Person[] }) {
   const router = useRouter();
   const [showNewTribe, setShowNewTribe] = useState(false);
-  const [tribeName, setTribeName] = useState("");
-  const [tribeLeadId, setTribeLeadId] = useState("");
+  const [tribeForm, setTribeForm] = useState({
+    name: "", tribeLeadId: "", tribeTechLeadId: "", tribeHRPartnerId: "",
+  });
 
   async function createTribe(e: React.FormEvent) {
     e.preventDefault();
     await fetch("/api/admin/tribes", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: tribeName, tribeLeadId: tribeLeadId || null }),
+      body: JSON.stringify({
+        name: tribeForm.name,
+        tribeLeadId: tribeForm.tribeLeadId || null,
+        tribeTechLeadId: tribeForm.tribeTechLeadId || null,
+        tribeHRPartnerId: tribeForm.tribeHRPartnerId || null,
+      }),
     });
-    setTribeName(""); setTribeLeadId(""); setShowNewTribe(false);
+    setTribeForm({ name: "", tribeLeadId: "", tribeTechLeadId: "", tribeHRPartnerId: "" });
+    setShowNewTribe(false);
     router.refresh();
   }
 
@@ -483,19 +490,31 @@ export function OrgManager({ tribes, people }: { tribes: Tribe[]; people: Person
       </div>
 
       {showNewTribe && (
-        <form onSubmit={createTribe} className="bg-white border border-gray-200 rounded-xl p-5 flex flex-wrap gap-3 items-end">
-          <div className="flex-1 min-w-40">
+        <form onSubmit={createTribe} className="bg-white border border-gray-200 rounded-xl p-5 space-y-3">
+          <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">Tribe Name</label>
-            <input value={tribeName} onChange={e => setTribeName(e.target.value)} required
+            <input value={tribeForm.name} onChange={e => setTribeForm(f => ({ ...f, name: e.target.value }))} required
               className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-purple-500"
               placeholder="e.g. Payments Tribe" />
           </div>
-          <div className="flex-1 min-w-40">
-            <label className="block text-xs font-medium text-gray-600 mb-1">Tribe Lead (optional)</label>
-            <PersonSelect value={tribeLeadId} onChange={setTribeLeadId} people={people} placeholder="Assign later..." />
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Tribe Lead (TL)</label>
+              <PersonSelect value={tribeForm.tribeLeadId} onChange={v => setTribeForm(f => ({ ...f, tribeLeadId: v }))} people={people} placeholder="Assign later..." />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Tribe Tech Lead (TTL)</label>
+              <PersonSelect value={tribeForm.tribeTechLeadId} onChange={v => setTribeForm(f => ({ ...f, tribeTechLeadId: v }))} people={people} placeholder="Assign later..." />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">HR Partner</label>
+              <PersonSelect value={tribeForm.tribeHRPartnerId} onChange={v => setTribeForm(f => ({ ...f, tribeHRPartnerId: v }))} people={people} placeholder="Assign later..." />
+            </div>
           </div>
-          <Button type="submit" style={{ background: "var(--primary)" }}>Create</Button>
-          <Button type="button" variant="ghost" onClick={() => setShowNewTribe(false)}>Cancel</Button>
+          <div className="flex gap-2">
+            <Button type="submit" style={{ background: "var(--primary)" }}>Create Tribe</Button>
+            <Button type="button" variant="ghost" onClick={() => setShowNewTribe(false)}>Cancel</Button>
+          </div>
         </form>
       )}
 
