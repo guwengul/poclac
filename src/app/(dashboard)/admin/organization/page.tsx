@@ -16,7 +16,7 @@ export default async function OrganizationPage() {
           include: {
             productOwner: { select: { id: true, name: true } },
             agileCoach:   { select: { id: true, name: true } },
-            memberships:  { select: { personId: true } },
+            members:      { select: { id: true, name: true } },
           },
         },
         functionalAreas: {

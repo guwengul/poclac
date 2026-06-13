@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { ChevronDown, ChevronRight, Plus, Users, Layers, Briefcase } from "lucide-react";
+import { ChevronDown, ChevronRight, Plus, Users, Layers, X } from "lucide-react";
 
 type Person = { id: string; name: string; email: string; functionalAreaId?: string | null };
 type FunctionalArea = {
@@ -15,7 +15,7 @@ type Squad = {
   id: string; name: string;
   productOwnerId?: string | null; productOwner?: { id: string; name: string } | null;
   agileCoachId?: string | null;   agileCoach?:   { id: string; name: string } | null;
-  memberships: { personId: string }[];
+  members: { id: string; name: string }[];
 };
 type Tribe = {
   id: string; name: string;
@@ -50,6 +50,141 @@ function RoleChip({ label, name }: { label: string; name?: string | null }) {
   );
 }
 
+function AreaCard({ area, people, onRefresh }: { area: FunctionalArea; people: Person[]; onRefresh: () => void }) {
+  const [addingMember, setAddingMember] = useState(false);
+  const [selectedPerson, setSelectedPerson] = useState("");
+
+  const memberIds = new Set(area.members.map(m => m.id));
+  const available = people.filter(p => !memberIds.has(p.id));
+
+  async function addMember() {
+    if (!selectedPerson) return;
+    await fetch(`/api/admin/functional-areas/${area.id}/members`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ personId: selectedPerson }),
+    });
+    setSelectedPerson(""); setAddingMember(false);
+    onRefresh();
+  }
+
+  async function removeMember(personId: string) {
+    await fetch(`/api/admin/functional-areas/${area.id}/members`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ personId }),
+    });
+    onRefresh();
+  }
+
+  return (
+    <div className="rounded-lg border border-gray-100 px-3 py-3">
+      <div className="flex items-center justify-between mb-1">
+        <p className="text-sm font-medium text-gray-800">{area.name}</p>
+        <button onClick={() => setAddingMember(!addingMember)}
+          className="text-xs text-purple-600 hover:text-purple-800 flex items-center gap-0.5">
+          <Plus className="w-3 h-3" /> Member
+        </button>
+      </div>
+      <p className="text-xs text-gray-400 mb-2">
+        CL: <span className="text-gray-600">{area.chapterLead?.name ?? <em>Not assigned</em>}</span>
+      </p>
+
+      {addingMember && (
+        <div className="flex gap-2 mb-2">
+          <PersonSelect value={selectedPerson} onChange={setSelectedPerson} people={available} placeholder="Add member..." />
+          <Button size="sm" onClick={addMember} disabled={!selectedPerson} style={{ background: "var(--primary)" }}>Add</Button>
+          <Button size="sm" variant="ghost" onClick={() => setAddingMember(false)}>✕</Button>
+        </div>
+      )}
+
+      {area.members.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {area.members.map(m => (
+            <span key={m.id} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-100 text-xs text-gray-600">
+              {m.name}
+              <button onClick={() => removeMember(m.id)} className="text-gray-300 hover:text-red-400 transition-colors">
+                <X className="w-2.5 h-2.5" />
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+      {area.members.length === 0 && <p className="text-xs text-gray-300 italic">No members</p>}
+    </div>
+  );
+}
+
+function SquadCard({ squad, people, tribeId, onRefresh }: { squad: Squad; people: Person[]; tribeId: string; onRefresh: () => void }) {
+  const [addingMember, setAddingMember] = useState(false);
+  const [selectedPerson, setSelectedPerson] = useState("");
+
+  const memberIds = new Set(squad.members.map(m => m.id));
+  const available = people.filter(p => !memberIds.has(p.id));
+
+  async function addMember() {
+    if (!selectedPerson) return;
+    // SquadMembership requires a periodId — use a special "permanent" approach:
+    // We'll store membership without period for org purposes
+    await fetch("/api/admin/squad-members", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ squadId: squad.id, personId: selectedPerson }),
+    });
+    setSelectedPerson(""); setAddingMember(false);
+    onRefresh();
+  }
+
+  async function removeMember(personId: string) {
+    await fetch("/api/admin/squad-members", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ squadId: squad.id, personId }),
+    });
+    onRefresh();
+  }
+
+  const memberPeople = squad.members;
+
+  return (
+    <div className="rounded-lg border border-gray-100 px-3 py-3">
+      <div className="flex items-center justify-between mb-1">
+        <p className="text-sm font-medium text-gray-800">{squad.name}</p>
+        <button onClick={() => setAddingMember(!addingMember)}
+          className="text-xs text-purple-600 hover:text-purple-800 flex items-center gap-0.5">
+          <Plus className="w-3 h-3" /> Member
+        </button>
+      </div>
+      <div className="text-xs text-gray-400 mb-2 space-y-0.5">
+        <p>PO: <span className="text-gray-600">{squad.productOwner?.name ?? <em>Not assigned</em>}</span></p>
+        <p>AC: <span className="text-gray-600">{squad.agileCoach?.name ?? <em>Not assigned</em>}</span></p>
+      </div>
+
+      {addingMember && (
+        <div className="flex gap-2 mb-2">
+          <PersonSelect value={selectedPerson} onChange={setSelectedPerson} people={available} placeholder="Add member..." />
+          <Button size="sm" onClick={addMember} disabled={!selectedPerson} style={{ background: "var(--primary)" }}>Add</Button>
+          <Button size="sm" variant="ghost" onClick={() => setAddingMember(false)}>✕</Button>
+        </div>
+      )}
+
+      {memberPeople.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {memberPeople.map(m => (
+            <span key={m.id} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-100 text-xs text-gray-600">
+              {m.name}
+              <button onClick={() => removeMember(m.id)} className="text-gray-300 hover:text-red-400 transition-colors">
+                <X className="w-2.5 h-2.5" />
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+      {memberPeople.length === 0 && <p className="text-xs text-gray-300 italic">No members</p>}
+    </div>
+  );
+}
+
 function TribeCard({ tribe, people, onRefresh }: { tribe: Tribe; people: Person[]; onRefresh: () => void }) {
   const [open, setOpen] = useState(true);
   const [editingRoles, setEditingRoles] = useState(false);
@@ -75,8 +210,7 @@ function TribeCard({ tribe, people, onRefresh }: { tribe: Tribe; people: Person[
         tribeHRPartnerId: roles.tribeHRPartnerId || null,
       }),
     });
-    setSaving(false);
-    setEditingRoles(false);
+    setSaving(false); setEditingRoles(false);
     onRefresh();
   }
 
@@ -91,8 +225,7 @@ function TribeCard({ tribe, people, onRefresh }: { tribe: Tribe; people: Person[
         agileCoachId: squadForm.agileCoachId || null,
       }),
     });
-    setSquadForm({ name: "", productOwnerId: "", agileCoachId: "" });
-    setAddingSquad(false);
+    setSquadForm({ name: "", productOwnerId: "", agileCoachId: "" }); setAddingSquad(false);
     onRefresh();
   }
 
@@ -101,19 +234,14 @@ function TribeCard({ tribe, people, onRefresh }: { tribe: Tribe; people: Person[
     await fetch("/api/admin/functional-areas", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: areaForm.name, tribeId: tribe.id,
-        chapterLeadId: areaForm.chapterLeadId || null,
-      }),
+      body: JSON.stringify({ name: areaForm.name, tribeId: tribe.id, chapterLeadId: areaForm.chapterLeadId || null }),
     });
-    setAreaForm({ name: "", chapterLeadId: "" });
-    setAddingArea(false);
+    setAreaForm({ name: "", chapterLeadId: "" }); setAddingArea(false);
     onRefresh();
   }
 
   return (
     <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-      {/* Header */}
       <div className="px-5 py-4 flex items-center justify-between border-b border-gray-100 bg-gray-50">
         <button onClick={() => setOpen(!open)} className="flex items-center gap-2 font-semibold text-gray-900">
           {open ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
@@ -127,7 +255,6 @@ function TribeCard({ tribe, people, onRefresh }: { tribe: Tribe; people: Person[
 
       {open && (
         <>
-          {/* Tribe roles */}
           <div className="px-5 py-4 border-b border-gray-100">
             {editingRoles ? (
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -150,7 +277,7 @@ function TribeCard({ tribe, people, onRefresh }: { tribe: Tribe; people: Person[
                 </div>
               </div>
             ) : (
-              <div className="flex flex-wrap gap-6 text-sm">
+              <div className="flex flex-wrap gap-6">
                 <RoleChip label="TL" name={tribe.tribeLead?.name} />
                 <RoleChip label="TTL" name={tribe.tribeTechLead?.name} />
                 <RoleChip label="HR Partner" name={tribe.tribeHRPartner?.name} />
@@ -158,7 +285,6 @@ function TribeCard({ tribe, people, onRefresh }: { tribe: Tribe; people: Person[
             )}
           </div>
 
-          {/* Functional Areas + Squads */}
           <div className="px-5 py-4 grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Functional Areas */}
             <div>
@@ -168,7 +294,7 @@ function TribeCard({ tribe, people, onRefresh }: { tribe: Tribe; people: Person[
                 </h3>
                 <button onClick={() => setAddingArea(!addingArea)}
                   className="text-xs text-purple-600 hover:text-purple-800 flex items-center gap-0.5">
-                  <Plus className="w-3 h-3" /> Add
+                  <Plus className="w-3 h-3" /> Add Area
                 </button>
               </div>
 
@@ -187,17 +313,9 @@ function TribeCard({ tribe, people, onRefresh }: { tribe: Tribe; people: Person[
               )}
 
               <div className="space-y-2">
-                {tribe.functionalAreas.length === 0 && (
-                  <p className="text-xs text-gray-400 italic">No functional areas defined.</p>
-                )}
+                {tribe.functionalAreas.length === 0 && <p className="text-xs text-gray-400 italic">No functional areas defined.</p>}
                 {tribe.functionalAreas.map(area => (
-                  <div key={area.id} className="rounded-lg border border-gray-100 px-3 py-2.5">
-                    <p className="text-sm font-medium text-gray-800">{area.name}</p>
-                    <p className="text-xs text-gray-400 mt-0.5">
-                      CL: <span className="text-gray-600">{area.chapterLead?.name ?? <em>Not assigned</em>}</span>
-                      {" · "}{area.members.length} member{area.members.length !== 1 ? "s" : ""}
-                    </p>
-                  </div>
+                  <AreaCard key={area.id} area={area} people={people} onRefresh={onRefresh} />
                 ))}
               </div>
             </div>
@@ -210,7 +328,7 @@ function TribeCard({ tribe, people, onRefresh }: { tribe: Tribe; people: Person[
                 </h3>
                 <button onClick={() => setAddingSquad(!addingSquad)}
                   className="text-xs text-purple-600 hover:text-purple-800 flex items-center gap-0.5">
-                  <Plus className="w-3 h-3" /> Add
+                  <Plus className="w-3 h-3" /> Add Squad
                 </button>
               </div>
 
@@ -231,20 +349,9 @@ function TribeCard({ tribe, people, onRefresh }: { tribe: Tribe; people: Person[
               )}
 
               <div className="space-y-2">
-                {tribe.squads.length === 0 && (
-                  <p className="text-xs text-gray-400 italic">No squads yet.</p>
-                )}
+                {tribe.squads.length === 0 && <p className="text-xs text-gray-400 italic">No squads yet.</p>}
                 {tribe.squads.map(squad => (
-                  <div key={squad.id} className="rounded-lg border border-gray-100 px-3 py-2.5">
-                    <p className="text-sm font-medium text-gray-800 flex items-center gap-1.5">
-                      <Briefcase className="w-3 h-3 text-gray-300" /> {squad.name}
-                    </p>
-                    <div className="text-xs text-gray-400 mt-0.5 space-y-0.5">
-                      <p>PO: <span className="text-gray-600">{squad.productOwner?.name ?? <em>Not assigned</em>}</span></p>
-                      <p>AC: <span className="text-gray-600">{squad.agileCoach?.name ?? <em>Not assigned</em>}</span></p>
-                      <p>{squad.memberships.length} member{squad.memberships.length !== 1 ? "s" : ""}</p>
-                    </div>
-                  </div>
+                  <SquadCard key={squad.id} squad={squad} people={people} tribeId={tribe.id} onRefresh={onRefresh} />
                 ))}
               </div>
             </div>

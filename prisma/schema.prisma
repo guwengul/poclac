@@ -63,6 +63,7 @@ model Person {
   name             String
   chapter          String?  // legacy, replaced by functionalAreaId
   functionalAreaId String?
+  squadId          String?
   isActive         Boolean  @default(true)
   isAdmin          Boolean  @default(false)
   hasLogin         Boolean  @default(false)
@@ -70,6 +71,7 @@ model Person {
   updatedAt        DateTime @updatedAt
 
   functionalArea        FunctionalArea?       @relation("AreaMembers", fields: [functionalAreaId], references: [id])
+  squad                 Squad?                @relation("SquadMembers", fields: [squadId], references: [id])
   tribeLeads            Tribe[]               @relation("TribeLead")
   tribeTechLeads        Tribe[]               @relation("TribeTechLead")
   tribeHRPartners       Tribe[]               @relation("TribeHRPartner")
@@ -133,6 +135,7 @@ model Squad {
   agileCoach   Person? @relation("SquadAC", fields: [agileCoachId], references: [id])
 
   memberships SquadMembership[]
+  members     Person[]          @relation("SquadMembers")
 }
 
 model SquadMembership {
