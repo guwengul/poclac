@@ -41,9 +41,10 @@ export default async function CalibrationPeriodPage({
     }),
     prisma.evaluation.findMany({
       where: { periodId },
-      include: {
-        evaluator: { select: { id: true, name: true } },
-        scores: { include: { criterion: { select: { id: true, code: true, name: true } } } },
+      select: {
+        id: true, evaluateeId: true, evaluatorId: true, role: true, status: true,
+        evaluator: { select: { name: true } },
+        scores: { select: { score: true, criterionId: true, criterion: { select: { id: true, code: true, name: true } } } },
       },
     }),
     prisma.finalScore.findMany({
@@ -89,6 +90,36 @@ export default async function CalibrationPeriodPage({
   }
 
   const totalFinalized = evaluatees.filter(e => finalScoreMap.has(e.id)).length;
+
+  // Stats: per evaluator person — role, # evaluated, avg given per criterion
+  const byEvaluator = new Map<string, {
+    name: string; role: string;
+    evaluateeCount: number;
+    avgTotal: number | null;
+    avgByCriterion: Record<string, number | null>;
+  }>();
+  for (const ev of evaluations.filter(e => e.status === "SUBMITTED")) {
+    const key = `${ev.evaluatorId}:${ev.role}`;
+    if (!byEvaluator.has(key)) {
+      byEvaluator.set(key, {
+        name: ev.evaluator.name, role: ev.role,
+        evaluateeCount: 0, avgTotal: null, avgByCriterion: {},
+      });
+    }
+    const entry = byEvaluator.get(key)!;
+    entry.evaluateeCount++;
+    const allScores = ev.scores.map(s => s.score);
+    const total = allScores.length ? allScores.reduce((a, b) => a + b, 0) / allScores.length : null;
+    entry.avgTotal = entry.avgTotal === null ? total
+      : total === null ? entry.avgTotal
+      : (entry.avgTotal * (entry.evaluateeCount - 1) + total) / entry.evaluateeCount;
+    for (const s of ev.scores) {
+      const prev = entry.avgByCriterion[s.criterionId];
+      const cnt = entry.evaluateeCount;
+      entry.avgByCriterion[s.criterionId] = (prev === undefined || prev === null) ? s.score
+        : (prev * (cnt - 1) + s.score) / cnt;
+    }
+  }
 
   return (
     <div>
@@ -172,6 +203,61 @@ export default async function CalibrationPeriodPage({
                       </tr>
                     );
                   })}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* Evaluator stats */}
+          {byEvaluator.size > 0 && (
+            <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+              <div className="px-5 py-3 border-b border-gray-100">
+                <h3 className="text-sm font-semibold text-gray-800">Evaluator Averages</h3>
+                <p className="text-xs text-gray-400 mt-0.5">Average scores given per evaluator across all their evaluatees</p>
+              </div>
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-gray-50 border-b border-gray-100">
+                    <th className="text-left px-5 py-2.5 font-medium text-gray-600 text-xs">Evaluator</th>
+                    <th className="text-left px-4 py-2.5 font-medium text-gray-600 text-xs">Role</th>
+                    <th className="text-center px-4 py-2.5 font-medium text-gray-600 text-xs"># Evaluated</th>
+                    {criteria.map(c => (
+                      <th key={c.id} className="text-center px-4 py-2.5 font-medium text-gray-600 text-xs">{c.code}</th>
+                    ))}
+                    <th className="text-center px-4 py-2.5 font-medium text-gray-600 text-xs">Avg</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {Array.from(byEvaluator.values())
+                    .sort((a, b) => a.role.localeCompare(b.role) || a.name.localeCompare(b.name))
+                    .map((ev, i) => (
+                      <tr key={i} className="hover:bg-gray-50">
+                        <td className="px-5 py-2.5 font-medium text-gray-900 text-xs">{ev.name}</td>
+                        <td className="px-4 py-2.5">
+                          <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-purple-50 text-purple-700">{ev.role}</span>
+                        </td>
+                        <td className="px-4 py-2.5 text-center text-xs text-gray-500">{ev.evaluateeCount}</td>
+                        {criteria.map(c => {
+                          const avg = ev.avgByCriterion[c.id] ?? null;
+                          return (
+                            <td key={c.id} className="px-4 py-2.5 text-center">
+                              {avg !== null ? (
+                                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                                  avg >= 4 ? "bg-green-100 text-green-700"
+                                  : avg <= 2 ? "bg-red-100 text-red-700"
+                                  : "bg-gray-100 text-gray-700"
+                                }`}>{avg.toFixed(2)}</span>
+                              ) : <span className="text-gray-300 text-xs">—</span>}
+                            </td>
+                          );
+                        })}
+                        <td className="px-4 py-2.5 text-center">
+                          {ev.avgTotal !== null
+                            ? <span className="text-xs font-bold text-purple-700">{ev.avgTotal.toFixed(2)}</span>
+                            : <span className="text-gray-300 text-xs">—</span>}
+                        </td>
+                      </tr>
+                    ))}
                 </tbody>
               </table>
             </div>
