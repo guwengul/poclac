@@ -19,20 +19,21 @@ import {
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/evaluations", label: "My Evaluations", icon: ClipboardList },
-  { href: "/calibration", label: "Calibration", icon: Star },
-  { href: "/reports", label: "Reports", icon: BarChart3 },
 ];
 
 const adminOnlyItems = [
   { href: "/admin/users", label: "People", icon: Users },
   { href: "/admin/periods", label: "Periods", icon: CalendarRange },
   { href: "/admin/organization", label: "Organization", icon: Building2 },
+  { href: "/calibration", label: "Calibration", icon: Star },
+  { href: "/reports", label: "Reports", icon: BarChart3 },
 ];
 
 const hrPartnerItems = [
   { href: "/admin/users", label: "People", icon: Users },
   { href: "/admin/periods", label: "Periods", icon: CalendarRange },
   { href: "/admin/organization", label: "Organization", icon: Building2 },
+  { href: "/calibration", label: "Calibration", icon: Star },
 ];
 
 export function Sidebar({ userEmail, isAdmin = false, isHRPartner = false }: {
