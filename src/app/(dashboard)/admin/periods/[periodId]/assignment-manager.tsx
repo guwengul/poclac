@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Trash2 } from "lucide-react";
+import { Trash2, Pencil, Check, X } from "lucide-react";
 import { PeriodStatus } from "@prisma/client";
 
 type Person = { id: string; name: string; email: string; chapter: string | null };
@@ -28,15 +28,18 @@ export function AssignmentManager({
   const [form, setForm] = useState({ evaluateeId: "", evaluatorId: "", role: "PO" as typeof ROLES[number] });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  // editing: key = "evaluateeId:role", value = selected evaluatorId
+  const [editing, setEditing] = useState<Record<string, string>>({});
+  const [saving, setSaving] = useState<string | null>(null);
   const locked = periodStatus !== "DRAFT";
 
   // Group assignments by evaluatee
-  const byEvaluatee: Record<string, { person: { id: string; name: string }; roles: Record<string, string> }> = {};
+  const byEvaluatee: Record<string, { person: { id: string; name: string }; roles: Record<string, { evaluatorId: string; name: string }> }> = {};
   for (const a of assignments) {
     if (!byEvaluatee[a.evaluatee.id]) {
       byEvaluatee[a.evaluatee.id] = { person: a.evaluatee, roles: {} };
     }
-    byEvaluatee[a.evaluatee.id].roles[a.role] = a.evaluator.name;
+    byEvaluatee[a.evaluatee.id].roles[a.role] = { evaluatorId: a.evaluator.id, name: a.evaluator.name };
   }
 
   async function assign(e: React.FormEvent) {
@@ -62,11 +65,34 @@ export function AssignmentManager({
     router.refresh();
   }
 
+  async function saveEdit(evaluateeId: string, role: string) {
+    const key = `${evaluateeId}:${role}`;
+    const evaluatorId = editing[key];
+    if (!evaluatorId) return;
+    setSaving(key);
+    // Upsert: POST with same evaluatee+role will overwrite
+    await fetch("/api/admin/assignments", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ periodId, evaluateeId, evaluatorId, role }),
+    });
+    setSaving(null);
+    setEditing(e => { const n = { ...e }; delete n[key]; return n; });
+    router.refresh();
+  }
+
+  function startEdit(evaluateeId: string, role: string, currentEvaluatorId: string) {
+    setEditing(e => ({ ...e, [`${evaluateeId}:${role}`]: currentEvaluatorId }));
+  }
+
+  function cancelEdit(evaluateeId: string, role: string) {
+    setEditing(e => { const n = { ...e }; delete n[`${evaluateeId}:${role}`]; return n; });
+  }
+
   return (
     <div className="space-y-4">
       <h2 className="text-base font-semibold text-gray-800">Evaluator Assignments</h2>
 
-      {/* Assignment form */}
       {!locked && (
         <div className="bg-white border border-gray-200 rounded-xl p-5">
           <h3 className="text-sm font-semibold text-gray-700 mb-4">Assign Evaluator</h3>
@@ -115,7 +141,6 @@ export function AssignmentManager({
         </div>
       )}
 
-      {/* Assignment table */}
       <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
         <table className="w-full text-sm">
           <thead>
@@ -130,25 +155,60 @@ export function AssignmentManager({
           </thead>
           <tbody className="divide-y divide-gray-100">
             {Object.values(byEvaluatee).map(({ person, roles }) => (
-              <tr key={person.id} className="hover:bg-gray-50">
+              <tr key={person.id} className="hover:bg-gray-50 group">
                 <td className="px-5 py-3 font-medium text-gray-900">{person.name}</td>
-                {ROLES.map((r) => (
-                  <td key={r} className="px-4 py-3">
-                    {roles[r] ? (
-                      <div className="flex items-center gap-2">
-                        <span className="text-gray-700">{roles[r]}</span>
-                        {!locked && (
-                          <button onClick={() => remove(person.id, r)}
-                            className="text-gray-300 hover:text-red-500 transition-colors">
-                            <Trash2 className="w-3.5 h-3.5" />
+                {ROLES.map((r) => {
+                  const current = roles[r];
+                  const editKey = `${person.id}:${r}`;
+                  const isEditing = editKey in editing;
+                  const isSaving = saving === editKey;
+
+                  return (
+                    <td key={r} className="px-4 py-2">
+                      {isEditing ? (
+                        <div className="flex items-center gap-1">
+                          <select
+                            value={editing[editKey]}
+                            onChange={ev => setEditing(e => ({ ...e, [editKey]: ev.target.value }))}
+                            className="rounded border border-gray-300 px-2 py-1 text-xs outline-none focus:border-purple-500 bg-white min-w-0 flex-1"
+                          >
+                            <option value="">— remove —</option>
+                            {people.filter(p => p.id !== person.id).map(p => (
+                              <option key={p.id} value={p.id}>{p.name}</option>
+                            ))}
+                          </select>
+                          <button onClick={() => saveEdit(person.id, r)}
+                            disabled={isSaving}
+                            className="p-1 text-green-600 hover:text-green-700 disabled:opacity-40">
+                            <Check className="w-3.5 h-3.5" />
                           </button>
-                        )}
-                      </div>
-                    ) : (
-                      <span className="text-gray-300 text-xs">Not assigned</span>
-                    )}
-                  </td>
-                ))}
+                          <button onClick={() => cancelEdit(person.id, r)}
+                            className="p-1 text-gray-400 hover:text-gray-600">
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ) : current ? (
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-gray-700">{current.name}</span>
+                          {!locked && (
+                            <span className="opacity-0 group-hover:opacity-100 flex items-center gap-0.5 transition-opacity">
+                              <button onClick={() => startEdit(person.id, r, current.evaluatorId)}
+                                className="p-0.5 text-gray-300 hover:text-blue-500 transition-colors">
+                                <Pencil className="w-3 h-3" />
+                              </button>
+                              <button onClick={() => remove(person.id, r)}
+                                className="p-0.5 text-gray-300 hover:text-red-500 transition-colors">
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-gray-300 text-xs">Not assigned</span>
+                      )}
+                    </td>
+                  );
+                })}
               </tr>
             ))}
             {Object.keys(byEvaluatee).length === 0 && (

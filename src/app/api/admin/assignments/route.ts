@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/auth";
+import { requireAdminOrHRPartner } from "@/lib/auth";
 import { EvaluatorRole } from "@prisma/client";
 
 export async function GET(req: NextRequest) {
-  try { await requireAdmin(); } catch {
+  try { await requireAdminOrHRPartner(); } catch {
     return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
   }
 
@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  try { await requireAdmin(); } catch {
+  try { await requireAdminOrHRPartner(); } catch {
     return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
   }
 
@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
-  try { await requireAdmin(); } catch {
+  try { await requireAdminOrHRPartner(); } catch {
     return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
   }
 
