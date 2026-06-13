@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { AddUserForm } from "./add-user-form";
 import { GrantLoginButton } from "./grant-login-button";
+import { PersonActions } from "./person-actions";
 
 export default async function UsersPage() {
   try { await requireAdmin(); } catch { redirect("/dashboard"); }
@@ -46,7 +47,7 @@ export default async function UsersPage() {
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {people.map((p) => (
-                  <tr key={p.id} className="hover:bg-gray-50">
+                  <tr key={p.id} className="hover:bg-gray-50 group">
                     <td className="px-5 py-3 font-medium text-gray-900">{p.name}</td>
                     <td className="px-5 py-3 text-gray-500 text-xs">{p.email}</td>
                     <td className="px-5 py-3 text-gray-500 text-xs">
@@ -64,9 +65,12 @@ export default async function UsersPage() {
                       )}
                     </td>
                     <td className="px-5 py-3 text-right">
-                      {!p.hasLogin && !p.isAdmin && (
-                        <GrantLoginButton personId={p.id} personName={p.name} />
-                      )}
+                      <div className="flex items-center justify-end gap-3">
+                        {!p.hasLogin && !p.isAdmin && (
+                          <GrantLoginButton personId={p.id} personName={p.name} />
+                        )}
+                        <PersonActions person={{ id: p.id, name: p.name, email: p.email, isAdmin: p.isAdmin }} />
+                      </div>
                     </td>
                   </tr>
                 ))}

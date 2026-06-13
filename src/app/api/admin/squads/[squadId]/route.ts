@@ -2,33 +2,33 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
 
-type Params = { params: Promise<{ tribeId: string }> };
+type Params = { params: Promise<{ squadId: string }> };
 
 export async function PATCH(req: NextRequest, { params }: Params) {
   try { await requireAdmin(); } catch {
     return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
   }
-  const { tribeId } = await params;
-  const { name, tribeLeadId, tribeTechLeadId, tribeHRPartnerId } = await req.json();
+  const { squadId } = await params;
+  const { name, productOwnerId, agileCoachId } = await req.json();
 
-  const tribe = await prisma.tribe.update({
-    where: { id: tribeId },
+  const squad = await prisma.squad.update({
+    where: { id: squadId },
     data: {
       name: name ?? undefined,
-      tribeLeadId: tribeLeadId ?? null,
-      tribeTechLeadId: tribeTechLeadId ?? null,
-      tribeHRPartnerId: tribeHRPartnerId ?? null,
+      productOwnerId: productOwnerId ?? null,
+      agileCoachId: agileCoachId ?? null,
     },
   });
-  return NextResponse.json({ tribe });
+  return NextResponse.json({ squad });
 }
 
 export async function DELETE(_req: NextRequest, { params }: Params) {
   try { await requireAdmin(); } catch {
     return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
   }
-  const { tribeId } = await params;
-  // Cascade: squads and functional areas deleted via DB cascade
-  await prisma.tribe.delete({ where: { id: tribeId } });
+  const { squadId } = await params;
+  // Clear squad from members
+  await prisma.person.updateMany({ where: { squadId }, data: { squadId: null } });
+  await prisma.squad.delete({ where: { id: squadId } });
   return NextResponse.json({ ok: true });
 }

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { ChevronDown, ChevronRight, Plus, Users, Layers, X } from "lucide-react";
+import { ChevronDown, ChevronRight, Plus, Users, Layers, X, Pencil, Trash2, Check } from "lucide-react";
 
 type Person = { id: string; name: string; email: string; functionalAreaId?: string | null };
 type FunctionalArea = {
@@ -53,6 +53,8 @@ function RoleChip({ label, name }: { label: string; name?: string | null }) {
 function AreaCard({ area, people, onRefresh }: { area: FunctionalArea; people: Person[]; onRefresh: () => void }) {
   const [addingMember, setAddingMember] = useState(false);
   const [selectedPerson, setSelectedPerson] = useState("");
+  const [editing, setEditing] = useState(false);
+  const [editForm, setEditForm] = useState({ name: area.name, chapterLeadId: area.chapterLeadId ?? "" });
 
   const memberIds = new Set(area.members.map(m => m.id));
   const available = people.filter(p => !memberIds.has(p.id));
@@ -77,18 +79,54 @@ function AreaCard({ area, people, onRefresh }: { area: FunctionalArea; people: P
     onRefresh();
   }
 
+  async function saveEdit() {
+    await fetch(`/api/admin/functional-areas/${area.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: editForm.name, chapterLeadId: editForm.chapterLeadId || null }),
+    });
+    setEditing(false); onRefresh();
+  }
+
+  async function deleteArea() {
+    if (!confirm(`Delete "${area.name}"? Members will be unassigned.`)) return;
+    await fetch(`/api/admin/functional-areas/${area.id}`, { method: "DELETE" });
+    onRefresh();
+  }
+
   return (
-    <div className="rounded-lg border border-gray-100 px-3 py-3">
-      <div className="flex items-center justify-between mb-1">
-        <p className="text-sm font-medium text-gray-800">{area.name}</p>
-        <button onClick={() => setAddingMember(!addingMember)}
-          className="text-xs text-purple-600 hover:text-purple-800 flex items-center gap-0.5">
-          <Plus className="w-3 h-3" /> Member
-        </button>
-      </div>
-      <p className="text-xs text-gray-400 mb-2">
-        CL: <span className="text-gray-600">{area.chapterLead?.name ?? <em>Not assigned</em>}</span>
-      </p>
+    <div className="rounded-lg border border-gray-100 px-3 py-3 group">
+      {editing ? (
+        <div className="space-y-2 mb-2">
+          <input value={editForm.name} onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))}
+            className="w-full rounded border border-gray-300 px-2 py-1 text-sm outline-none focus:border-purple-500" />
+          <PersonSelect value={editForm.chapterLeadId} onChange={v => setEditForm(f => ({ ...f, chapterLeadId: v }))}
+            people={people} placeholder="Chapter Lead (CL)..." />
+          <div className="flex gap-2">
+            <button onClick={saveEdit} className="text-green-600 hover:text-green-800"><Check className="w-3.5 h-3.5" /></button>
+            <button onClick={() => setEditing(false)} className="text-gray-400 hover:text-gray-600"><X className="w-3.5 h-3.5" /></button>
+          </div>
+        </div>
+      ) : (
+        <>
+          <div className="flex items-center justify-between mb-1">
+            <p className="text-sm font-medium text-gray-800">{area.name}</p>
+            <div className="flex items-center gap-2">
+              <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button onClick={() => setEditing(true)} className="text-gray-300 hover:text-gray-600"><Pencil className="w-3 h-3" /></button>
+                <button onClick={deleteArea} className="text-gray-300 hover:text-red-500"><Trash2 className="w-3 h-3" /></button>
+              </div>
+              <button onClick={() => setAddingMember(!addingMember)}
+                className="text-xs text-purple-600 hover:text-purple-800 flex items-center gap-0.5">
+                <Plus className="w-3 h-3" /> Member
+              </button>
+            </div>
+          </div>
+          <p className="text-xs text-gray-400 mb-2">
+            CL: <span className="text-gray-600">{area.chapterLead?.name ?? <em>Not assigned</em>}</span>
+          </p>
+        </>
+      )}
 
       {addingMember && (
         <div className="flex gap-2 mb-2">
@@ -118,6 +156,12 @@ function AreaCard({ area, people, onRefresh }: { area: FunctionalArea; people: P
 function SquadCard({ squad, people, tribeId, onRefresh }: { squad: Squad; people: Person[]; tribeId: string; onRefresh: () => void }) {
   const [addingMember, setAddingMember] = useState(false);
   const [selectedPerson, setSelectedPerson] = useState("");
+  const [editing, setEditing] = useState(false);
+  const [editForm, setEditForm] = useState({
+    name: squad.name,
+    productOwnerId: squad.productOwnerId ?? "",
+    agileCoachId: squad.agileCoachId ?? "",
+  });
 
   const memberIds = new Set(squad.members.map(m => m.id));
   const available = people.filter(p => !memberIds.has(p.id));
@@ -146,19 +190,61 @@ function SquadCard({ squad, people, tribeId, onRefresh }: { squad: Squad; people
 
   const memberPeople = squad.members;
 
+  async function saveEdit() {
+    await fetch(`/api/admin/squads/${squad.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: editForm.name,
+        productOwnerId: editForm.productOwnerId || null,
+        agileCoachId: editForm.agileCoachId || null,
+      }),
+    });
+    setEditing(false); onRefresh();
+  }
+
+  async function deleteSquad() {
+    if (!confirm(`Delete "${squad.name}"? Members will be unassigned.`)) return;
+    await fetch(`/api/admin/squads/${squad.id}`, { method: "DELETE" });
+    onRefresh();
+  }
+
   return (
-    <div className="rounded-lg border border-gray-100 px-3 py-3">
-      <div className="flex items-center justify-between mb-1">
-        <p className="text-sm font-medium text-gray-800">{squad.name}</p>
-        <button onClick={() => setAddingMember(!addingMember)}
-          className="text-xs text-purple-600 hover:text-purple-800 flex items-center gap-0.5">
-          <Plus className="w-3 h-3" /> Member
-        </button>
-      </div>
-      <div className="text-xs text-gray-400 mb-2 space-y-0.5">
-        <p>PO: <span className="text-gray-600">{squad.productOwner?.name ?? <em>Not assigned</em>}</span></p>
-        <p>AC: <span className="text-gray-600">{squad.agileCoach?.name ?? <em>Not assigned</em>}</span></p>
-      </div>
+    <div className="rounded-lg border border-gray-100 px-3 py-3 group">
+      {editing ? (
+        <div className="space-y-2 mb-2">
+          <input value={editForm.name} onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))}
+            className="w-full rounded border border-gray-300 px-2 py-1 text-sm outline-none focus:border-purple-500" />
+          <PersonSelect value={editForm.productOwnerId} onChange={v => setEditForm(f => ({ ...f, productOwnerId: v }))}
+            people={people} placeholder="Product Owner (PO)..." />
+          <PersonSelect value={editForm.agileCoachId} onChange={v => setEditForm(f => ({ ...f, agileCoachId: v }))}
+            people={people} placeholder="Agile Coach (AC)..." />
+          <div className="flex gap-2">
+            <button onClick={saveEdit} className="text-green-600 hover:text-green-800"><Check className="w-3.5 h-3.5" /></button>
+            <button onClick={() => setEditing(false)} className="text-gray-400 hover:text-gray-600"><X className="w-3.5 h-3.5" /></button>
+          </div>
+        </div>
+      ) : (
+        <>
+          <div className="flex items-center justify-between mb-1">
+            <p className="text-sm font-medium text-gray-800">{squad.name}</p>
+            <div className="flex items-center gap-2">
+              <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button onClick={() => setEditing(true)} className="text-gray-300 hover:text-gray-600"><Pencil className="w-3 h-3" /></button>
+                <button onClick={deleteSquad} className="text-gray-300 hover:text-red-500"><Trash2 className="w-3 h-3" /></button>
+              </div>
+              <button onClick={() => setAddingMember(!addingMember)}
+                className="text-xs text-purple-600 hover:text-purple-800 flex items-center gap-0.5">
+                <Plus className="w-3 h-3" /> Member
+              </button>
+            </div>
+          </div>
+          <div className="text-xs text-gray-400 mb-2 space-y-0.5">
+            <p>PO: <span className="text-gray-600">{squad.productOwner?.name ?? <em>Not assigned</em>}</span></p>
+            <p>AC: <span className="text-gray-600">{squad.agileCoach?.name ?? <em>Not assigned</em>}</span></p>
+          </div>
+        </>
+      )}
 
       {addingMember && (
         <div className="flex gap-2 mb-2">
@@ -247,10 +333,19 @@ function TribeCard({ tribe, people, onRefresh }: { tribe: Tribe; people: Person[
           {open ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
           {tribe.name}
         </button>
-        <button onClick={() => setEditingRoles(!editingRoles)}
-          className="text-xs text-purple-600 hover:text-purple-800 font-medium">
-          {editingRoles ? "Cancel" : "Edit Roles"}
-        </button>
+        <div className="flex items-center gap-3">
+          <button onClick={() => setEditingRoles(!editingRoles)}
+            className="text-xs text-purple-600 hover:text-purple-800 font-medium">
+            {editingRoles ? "Cancel" : "Edit Roles"}
+          </button>
+          <button onClick={async () => {
+            if (!confirm(`Delete tribe "${tribe.name}"? All squads and functional areas will be deleted.`)) return;
+            await fetch(`/api/admin/tribes/${tribe.id}`, { method: "DELETE" });
+            onRefresh();
+          }} className="text-gray-300 hover:text-red-500">
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        </div>
       </div>
 
       {open && (
