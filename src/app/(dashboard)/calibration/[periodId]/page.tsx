@@ -13,8 +13,8 @@ function calcStars(
 ): Map<string, string> {
   const sorted = [...people].sort((a, b) => b.finalScore - a.finalScore);
   const n = sorted.length;
-  const highCount = Math.floor(n * 0.1);
-  const distCount = Math.floor(n * 0.1);
+  const highCount = Math.floor(n * 0.5);
+  const distCount = Math.floor(n * 0.5);
   const map = new Map<string, string>();
   sorted.forEach((p, i) => {
     if (i < highCount) map.set(p.id, "⭐⭐");
