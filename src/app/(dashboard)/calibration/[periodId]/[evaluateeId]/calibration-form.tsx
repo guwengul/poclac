@@ -1,7 +1,9 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { Lock } from "lucide-react";
 
 type Criterion = { id: string; code: string; name: string };
 type EvalScore = { criterionId: string; score: number; comment: string | null };
@@ -23,18 +25,25 @@ export function CalibrationScoreEditor({
   criteria,
   evaluators: initialEvaluators,
   periodId,
+  evaluateeId,
   roleWeights,
   criterionWeights,
+  existingFinalScore,
 }: {
   criteria: Criterion[];
   evaluators: Evaluator[];
   periodId: string;
+  evaluateeId: string;
   roleWeights: Record<string, number>;
-  criterionWeights: Record<string, Record<string, number>>; // role → criterionId → weight
+  criterionWeights: Record<string, Record<string, number>>;
+  existingFinalScore: number | null;
 }) {
+  const router = useRouter();
   const [evaluators, setEvaluators] = useState(initialEvaluators);
-  const [saving, setSaving] = useState<string | null>(null); // evaluationId being saved
+  const [saving, setSaving] = useState<string | null>(null);
   const [saved, setSaved] = useState<string | null>(null);
+  const [finalScore, setFinalScore] = useState<number | null>(existingFinalScore);
+  const [finalizing, setFinalizing] = useState(false);
 
   function getScore(ev: Evaluator, criterionId: string) {
     return ev.scores.find(s => s.criterionId === criterionId)?.score ?? null;
@@ -99,29 +108,65 @@ export function CalibrationScoreEditor({
 
   const suggestion = suggestionScore();
 
+  async function finalize() {
+    if (suggestion === null) return;
+    setFinalizing(true);
+    const res = await fetch(`/api/calibration/${periodId}/${evaluateeId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ finalScore: suggestion, justification: null }),
+    });
+    setFinalizing(false);
+    if (res.ok) {
+      setFinalScore(suggestion);
+      router.refresh();
+    }
+  }
+
   return (
     <div className="space-y-6">
       {/* Suggestion score banner */}
-      <div className="bg-purple-50 border border-purple-100 rounded-xl px-5 py-4 flex items-center justify-between">
+      <div className={`border rounded-xl px-5 py-4 flex items-center justify-between ${finalScore !== null ? "bg-green-50 border-green-200" : "bg-purple-50 border-purple-100"}`}>
         <div>
-          <p className="text-xs font-semibold text-purple-500 uppercase tracking-wide">Suggestion Score</p>
-          <p className="text-3xl font-bold text-purple-800 mt-0.5">
-            {suggestion !== null ? suggestion.toFixed(2) : "—"}
+          <p className={`text-xs font-semibold uppercase tracking-wide ${finalScore !== null ? "text-green-600" : "text-purple-500"}`}>
+            {finalScore !== null ? "Finalized Score" : "Suggestion Score"}
           </p>
-          <p className="text-xs text-purple-400 mt-0.5">Weighted average · updates as scores change</p>
+          <p className={`text-3xl font-bold mt-0.5 ${finalScore !== null ? "text-green-800" : "text-purple-800"}`}>
+            {finalScore !== null ? finalScore.toFixed(2) : suggestion !== null ? suggestion.toFixed(2) : "—"}
+          </p>
+          <p className={`text-xs mt-0.5 ${finalScore !== null ? "text-green-500" : "text-purple-400"}`}>
+            {finalScore !== null ? "Locked · calibration complete" : "Weighted average · updates as scores change"}
+          </p>
         </div>
-        <div className="text-right text-xs text-purple-400 space-y-1">
-          {evaluators.filter(ev => ev.status === "SUBMITTED").map(ev => {
-            const s = evalWeightedScore(ev);
-            const w = roleWeights[ev.role];
-            return (
-              <div key={ev.evaluationId}>
-                <span className="font-medium text-purple-600">{ev.role}</span>
-                {" "}({w !== undefined ? `${w}%` : "equal"})
-                {" = "}{s !== null ? s.toFixed(2) : "—"}
-              </div>
-            );
-          })}
+        <div className="flex flex-col items-end gap-3">
+          <div className="text-right text-xs text-purple-400 space-y-1">
+            {evaluators.filter(ev => ev.status === "SUBMITTED").map(ev => {
+              const s = evalWeightedScore(ev);
+              const w = roleWeights[ev.role];
+              return (
+                <div key={ev.evaluationId}>
+                  <span className="font-medium text-purple-600">{ev.role}</span>
+                  {" "}({w !== undefined ? `${w}%` : "equal"})
+                  {" = "}{s !== null ? s.toFixed(2) : "—"}
+                </div>
+              );
+            })}
+          </div>
+          {finalScore === null ? (
+            <button
+              onClick={finalize}
+              disabled={finalizing || suggestion === null}
+              className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg text-white transition-colors disabled:opacity-40"
+              style={{ background: "var(--primary)" }}>
+              <Lock className="w-3 h-3" />
+              {finalizing ? "Finalizing..." : "Finalize Score"}
+            </button>
+          ) : (
+            <div className="flex items-center gap-1.5 text-xs text-green-600 font-medium">
+              <Lock className="w-3 h-3" />
+              Finalized
+            </div>
+          )}
         </div>
       </div>
 

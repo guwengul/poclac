@@ -11,7 +11,7 @@ export default async function CalibrationPersonPage({
 
   const { periodId, evaluateeId } = await params;
 
-  const [period, evaluatee, evaluations, criteria, roleWeightConfigs, criterionConfigs] = await Promise.all([
+  const [period, evaluatee, evaluations, criteria, roleWeightConfigs, criterionConfigs, finalScore] = await Promise.all([
     prisma.period.findUnique({ where: { id: periodId } }),
     prisma.person.findUnique({
       where: { id: evaluateeId },
@@ -28,6 +28,7 @@ export default async function CalibrationPersonPage({
     prisma.criterion.findMany({ where: { isActive: true }, orderBy: { code: "asc" } }),
     prisma.roleWeightConfig.findMany({ where: { periodId } }),
     prisma.roleCriterionConfig.findMany({ where: { periodId } }),
+    prisma.finalScore.findUnique({ where: { periodId_evaluateeId: { periodId, evaluateeId } } }),
   ]);
 
   if (!period || !evaluatee) notFound();
@@ -76,8 +77,10 @@ export default async function CalibrationPersonPage({
         criteria={criteria}
         evaluators={evaluatorData}
         periodId={periodId}
+        evaluateeId={evaluateeId}
         roleWeights={roleWeights}
         criterionWeights={criterionWeights}
+        existingFinalScore={finalScore?.finalScore ?? null}
       />
     </div>
   );
