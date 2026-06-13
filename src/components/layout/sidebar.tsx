@@ -24,11 +24,14 @@ const navItems = [
 ];
 
 const adminOnlyItems = [
-  { href: "/admin/users", label: "Users", icon: Users },
+  { href: "/admin/users", label: "People", icon: Users },
   { href: "/admin/periods", label: "Periods", icon: CalendarRange },
+  { href: "/admin/organization", label: "Organization", icon: Building2 },
 ];
 
 const hrPartnerItems = [
+  { href: "/admin/users", label: "People", icon: Users },
+  { href: "/admin/periods", label: "Periods", icon: CalendarRange },
   { href: "/admin/organization", label: "Organization", icon: Building2 },
 ];
 
@@ -47,10 +50,7 @@ export function Sidebar({ userEmail, isAdmin = false, isHRPartner = false }: {
   }
 
   const showAdminSection = isAdmin || isHRPartner;
-  const visibleAdminItems = [
-    ...(isAdmin ? adminOnlyItems : []),
-    ...(isAdmin || isHRPartner ? hrPartnerItems : []),
-  ];
+  const visibleAdminItems = isAdmin ? adminOnlyItems : isHRPartner ? hrPartnerItems : [];
 
   function NavLink({ href, label, icon: Icon }: { href: string; label: string; icon: React.ElementType }) {
     const active = pathname === href || pathname.startsWith(href + "/");

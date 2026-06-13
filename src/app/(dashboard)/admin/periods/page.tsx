@@ -1,4 +1,4 @@
-import { requireAdmin } from "@/lib/auth";
+import { requireAdminOrHRPartner } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import Link from "next/link";
@@ -22,7 +22,7 @@ const STATUS_COLORS: Record<PeriodStatus, string> = {
 };
 
 export default async function PeriodsPage() {
-  try { await requireAdmin(); } catch { redirect("/dashboard"); }
+  try { await requireAdminOrHRPartner(); } catch { redirect("/dashboard"); }
 
   const periods = await prisma.period.findMany({
     orderBy: { createdAt: "desc" },

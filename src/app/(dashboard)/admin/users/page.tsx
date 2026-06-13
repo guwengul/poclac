@@ -1,4 +1,4 @@
-import { requireAdmin } from "@/lib/auth";
+import { requireAdminOrHRPartner } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { AddUserForm } from "./add-user-form";
@@ -6,7 +6,7 @@ import { GrantLoginButton } from "./grant-login-button";
 import { PersonActions } from "./person-actions";
 
 export default async function UsersPage() {
-  try { await requireAdmin(); } catch { redirect("/dashboard"); }
+  try { await requireAdminOrHRPartner(); } catch { redirect("/dashboard"); }
 
   const people = await prisma.person.findMany({
     orderBy: { name: "asc" },
