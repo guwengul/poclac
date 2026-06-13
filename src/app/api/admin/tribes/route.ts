@@ -24,10 +24,10 @@ export async function POST(req: NextRequest) {
   }
 
   const { name, tribeLeadId } = await req.json();
-  if (!name || !tribeLeadId) {
-    return NextResponse.json({ error: "Name and Tribe Lead are required." }, { status: 400 });
+  if (!name) {
+    return NextResponse.json({ error: "Name is required." }, { status: 400 });
   }
 
-  const tribe = await prisma.tribe.create({ data: { name, tribeLeadId } });
+  const tribe = await prisma.tribe.create({ data: { name, tribeLeadId: tribeLeadId ?? null } });
   return NextResponse.json({ tribe }, { status: 201 });
 }

@@ -24,6 +24,12 @@ enum PeriodStatus {
   CLOSED
 }
 
+enum TribePeriodStatus {
+  PENDING
+  ACTIVE
+  CLOSED
+}
+
 enum EvaluationStatus {
   DRAFT
   SUBMITTED
@@ -52,46 +58,79 @@ enum ConstraintMode {
 // ─── Organization ─────────────────────────────────────────────────────────────
 
 model Person {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String
-  chapter   String?
-  isActive  Boolean  @default(true)
-  isAdmin   Boolean  @default(false)
-  hasLogin  Boolean  @default(false)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id               String   @id @default(cuid())
+  email            String   @unique
+  name             String
+  chapter          String?  // legacy, replaced by functionalAreaId
+  functionalAreaId String?
+  isActive         Boolean  @default(true)
+  isAdmin          Boolean  @default(false)
+  hasLogin         Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
+  functionalArea        FunctionalArea?       @relation("AreaMembers", fields: [functionalAreaId], references: [id])
   tribeLeads            Tribe[]               @relation("TribeLead")
+  tribeTechLeads        Tribe[]               @relation("TribeTechLead")
+  tribeHRPartners       Tribe[]               @relation("TribeHRPartner")
+  squadsAsPO            Squad[]               @relation("SquadPO")
+  squadsAsAC            Squad[]               @relation("SquadAC")
+  chapterLeadAreas      FunctionalArea[]      @relation("AreaChapterLead")
   squadMemberships      SquadMembership[]
   evaluatorAssignments  EvaluatorAssignment[] @relation("Evaluator")
   evaluateeAssignments  EvaluatorAssignment[] @relation("Evaluatee")
   evaluationsGiven      Evaluation[]          @relation("EvaluatorEvals")
   evaluationsReceived   Evaluation[]          @relation("EvaluateeEvals")
-  finalScoresLocked       FinalScore[]          @relation("LockedByTL")
-  finalScoresReceived     FinalScore[]          @relation("EvaluateeFinalScore")
-  distinctionsReceived    Distinction[]         @relation("DistinctionEvaluatee")
-  distinctionsMarked      Distinction[]         @relation("DistinctionMarkedBy")
-  distinctionsApproved    Distinction[]         @relation("DistinctionApprovedBy")
-  auditLogs               AuditLog[]
+  finalScoresLocked     FinalScore[]          @relation("LockedByTL")
+  finalScoresReceived   FinalScore[]          @relation("EvaluateeFinalScore")
+  distinctionsReceived  Distinction[]         @relation("DistinctionEvaluatee")
+  distinctionsMarked    Distinction[]         @relation("DistinctionMarkedBy")
+  distinctionsApproved  Distinction[]         @relation("DistinctionApprovedBy")
+  tribePeriodsActivated TribePeriod[]         @relation("TribePeriodActivatedBy")
+  auditLogs             AuditLog[]
 }
 
 model Tribe {
-  id          String   @id @default(cuid())
-  name        String
-  tribeLeadId String
-  tribeLead   Person   @relation("TribeLead", fields: [tribeLeadId], references: [id])
-  createdAt   DateTime @default(now())
+  id               String   @id @default(cuid())
+  name             String
+  tribeLeadId      String?
+  tribeTechLeadId  String?
+  tribeHRPartnerId String?
+  createdAt        DateTime @default(now())
 
-  squads Squad[]
+  tribeLead       Person?  @relation("TribeLead", fields: [tribeLeadId], references: [id])
+  tribeTechLead   Person?  @relation("TribeTechLead", fields: [tribeTechLeadId], references: [id])
+  tribeHRPartner  Person?  @relation("TribeHRPartner", fields: [tribeHRPartnerId], references: [id])
+
+  squads          Squad[]
+  functionalAreas FunctionalArea[]
+  tribePeriods    TribePeriod[]
+}
+
+model FunctionalArea {
+  id            String  @id @default(cuid())
+  name          String
+  tribeId       String
+  chapterLeadId String?
+
+  tribe       Tribe   @relation(fields: [tribeId], references: [id], onDelete: Cascade)
+  chapterLead Person? @relation("AreaChapterLead", fields: [chapterLeadId], references: [id])
+  members     Person[] @relation("AreaMembers")
+
+  @@unique([tribeId, name])
 }
 
 model Squad {
-  id        String   @id @default(cuid())
-  name      String
-  tribeId   String
-  tribe     Tribe    @relation(fields: [tribeId], references: [id])
-  createdAt DateTime @default(now())
+  id             String   @id @default(cuid())
+  name           String
+  tribeId        String
+  productOwnerId String?
+  agileCoachId   String?
+  createdAt      DateTime @default(now())
+
+  tribe        Tribe   @relation(fields: [tribeId], references: [id], onDelete: Cascade)
+  productOwner Person? @relation("SquadPO", fields: [productOwnerId], references: [id])
+  agileCoach   Person? @relation("SquadAC", fields: [agileCoachId], references: [id])
 
   memberships SquadMembership[]
 }
@@ -112,24 +151,42 @@ model SquadMembership {
 // ─── Period & Configuration ───────────────────────────────────────────────────
 
 model Period {
-  id                   String       @id @default(cuid())
-  name                 String
-  status               PeriodStatus @default(DRAFT)
-  scoringDeadline      DateTime
-  calibrationDeadline  DateTime
-  startDate            DateTime
-  endDate              DateTime
-  createdAt            DateTime     @default(now())
-  updatedAt            DateTime     @updatedAt
+  id                  String       @id @default(cuid())
+  name                String
+  status              PeriodStatus @default(DRAFT)
+  scoringDeadline     DateTime
+  calibrationDeadline DateTime
+  startDate           DateTime
+  endDate             DateTime
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
 
-  squadMemberships      SquadMembership[]
-  evaluatorAssignments  EvaluatorAssignment[]
-  roleCriterionConfigs  RoleCriterionConfig[]
-  roleWeightConfigs     RoleWeightConfig[]
-  scoringConstraints    ScoringConstraintConfig[]
-  evaluations           Evaluation[]
-  finalScores           FinalScore[]
-  distinctions          Distinction[]
+  squadMemberships     SquadMembership[]
+  evaluatorAssignments EvaluatorAssignment[]
+  roleCriterionConfigs RoleCriterionConfig[]
+  roleWeightConfigs    RoleWeightConfig[]
+  scoringConstraints   ScoringConstraintConfig[]
+  evaluations          Evaluation[]
+  finalScores          FinalScore[]
+  distinctions         Distinction[]
+  tribePeriods         TribePeriod[]
+}
+
+// Per-tribe participation in a global period
+model TribePeriod {
+  id            String            @id @default(cuid())
+  periodId      String
+  tribeId       String
+  status        TribePeriodStatus @default(PENDING)
+  activatedAt   DateTime?
+  activatedById String?
+  createdAt     DateTime          @default(now())
+
+  period      Period  @relation(fields: [periodId], references: [id])
+  tribe       Tribe   @relation(fields: [tribeId], references: [id])
+  activatedBy Person? @relation("TribePeriodActivatedBy", fields: [activatedById], references: [id])
+
+  @@unique([periodId, tribeId])
 }
 
 // 3 fixed criteria — seeded once
@@ -150,7 +207,7 @@ model RoleCriterionConfig {
   role        EvaluatorRole
   criterionId String
   isActive    Boolean       @default(true)
-  weight      Float         // 0-100 (percentage); active weights per role must sum to 100
+  weight      Float
 
   period    Period    @relation(fields: [periodId], references: [id])
   criterion Criterion @relation(fields: [criterionId], references: [id])
@@ -162,7 +219,7 @@ model RoleWeightConfig {
   id          String        @id @default(cuid())
   periodId    String
   role        EvaluatorRole
-  upperWeight Float         // optional role-level weight for suggestion score
+  upperWeight Float
 
   period Period @relation(fields: [periodId], references: [id])
 
@@ -170,14 +227,14 @@ model RoleWeightConfig {
 }
 
 model ScoringConstraintConfig {
-  id               String         @id @default(cuid())
-  periodId         String
-  role             EvaluatorRole
-  mode             ConstraintMode @default(M1_FREE)
-  averageCap       Float?         // M2
-  targetAverage    Float?         // M3
-  quotaPercent     Float?         // M4
-  smallTeamThreshold Int?         // M4 auto-disable threshold
+  id                 String         @id @default(cuid())
+  periodId           String
+  role               EvaluatorRole
+  mode               ConstraintMode @default(M1_FREE)
+  averageCap         Float?
+  targetAverage      Float?
+  quotaPercent       Float?
+  smallTeamThreshold Int?
 
   period Period @relation(fields: [periodId], references: [id])
 
@@ -192,6 +249,7 @@ model EvaluatorAssignment {
   evaluateeId String
   evaluatorId String
   role        EvaluatorRole
+  isOverride  Boolean       @default(false) // true = HR Partner manually overrode auto-assignment
 
   period    Period @relation(fields: [periodId], references: [id])
   evaluatee Person @relation("Evaluatee", fields: [evaluateeId], references: [id])
@@ -201,30 +259,29 @@ model EvaluatorAssignment {
 }
 
 model Evaluation {
-  id           String           @id @default(cuid())
-  periodId     String
-  evaluateeId  String
-  evaluatorId  String
-  role         EvaluatorRole
-  status       EvaluationStatus @default(DRAFT)
-  submittedAt  DateTime?
-  createdAt    DateTime         @default(now())
-  updatedAt    DateTime         @updatedAt
+  id          String           @id @default(cuid())
+  periodId    String
+  evaluateeId String
+  evaluatorId String
+  role        EvaluatorRole
+  status      EvaluationStatus @default(DRAFT)
+  submittedAt DateTime?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
 
   period    Period            @relation(fields: [periodId], references: [id])
   evaluatee Person            @relation("EvaluateeEvals", fields: [evaluateeId], references: [id])
   evaluator Person            @relation("EvaluatorEvals", fields: [evaluatorId], references: [id])
   scores    EvaluationScore[]
 
-  // evaluatorId != evaluateeId enforced at application layer + DB check below
   @@unique([periodId, evaluateeId, role])
 }
 
 model EvaluationScore {
-  id           String @id @default(cuid())
+  id           String  @id @default(cuid())
   evaluationId String
   criterionId  String
-  score        Int    // CHECK: 1 <= score <= 5
+  score        Int
   comment      String?
 
   evaluation Evaluation @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
@@ -236,20 +293,20 @@ model EvaluationScore {
 // ─── Calibration & Final Score ────────────────────────────────────────────────
 
 model FinalScore {
-  id              String    @id @default(cuid())
-  periodId        String
-  evaluateeId     String
+  id            String    @id @default(cuid())
+  periodId      String
+  evaluateeId   String
   suggestionScore Float?
-  finalScore      Float?
-  justification   String?   // required when finalScore differs from suggestionScore
-  lockedById      String?
-  lockedAt        DateTime?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  finalScore    Float?
+  justification String?
+  lockedById    String?
+  lockedAt      DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
-  period     Period  @relation(fields: [periodId], references: [id])
-  evaluatee  Person  @relation("EvaluateeFinalScore", fields: [evaluateeId], references: [id])
-  lockedBy   Person? @relation("LockedByTL", fields: [lockedById], references: [id])
+  period    Period  @relation(fields: [periodId], references: [id])
+  evaluatee Person  @relation("EvaluateeFinalScore", fields: [evaluateeId], references: [id])
+  lockedBy  Person? @relation("LockedByTL", fields: [lockedById], references: [id])
 
   @@unique([periodId, evaluateeId])
 }
@@ -278,14 +335,14 @@ model Distinction {
 // ─── Audit Log ────────────────────────────────────────────────────────────────
 
 model AuditLog {
-  id         String   @id @default(cuid())
-  occurredAt DateTime @default(now())
-  userId     String
-  action     String   // e.g. SCORE_SUBMITTED, FINAL_SCORE_LOCKED, DISTINCTION_MARKED
-  entity     String   // e.g. Evaluation, FinalScore
-  entityId   String
-  oldValue   Json?
-  newValue   Json?
+  id            String   @id @default(cuid())
+  occurredAt    DateTime @default(now())
+  userId        String
+  action        String
+  entity        String
+  entityId      String
+  oldValue      Json?
+  newValue      Json?
   justification String?
 
   user Person @relation(fields: [userId], references: [id])
