@@ -16,7 +16,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
     include: {
       evaluatee: { select: { id: true, name: true, chapter: true } },
       period: { select: { id: true, name: true, status: true, scoringDeadline: true } },
-      scores: { include: { criterion: true } },
+      scores: { include: { criterion: { select: { id: true, code: true, name: true, description: true } } } },
     },
   });
 

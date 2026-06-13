@@ -134,9 +134,11 @@ model Period {
 
 // 3 fixed criteria — seeded once
 model Criterion {
-  id   String @id @default(cuid())
-  code String @unique // K1, K2, K3
-  name String
+  id          String  @id @default(cuid())
+  code        String  @unique // K1, K2, K3
+  name        String
+  description String?
+  isActive    Boolean @default(true)
 
   roleCriterionConfigs RoleCriterionConfig[]
   evaluationScores     EvaluationScore[]
