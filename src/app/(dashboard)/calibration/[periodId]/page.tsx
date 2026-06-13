@@ -3,10 +3,26 @@ import { prisma } from "@/lib/prisma";
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { CheckCircle2, Circle } from "lucide-react";
-import { DistinctionPanel } from "./distinction-panel";
 
 const ROLE_LABELS: Record<string, string> = { PO: "Product Owner", CL: "Chapter Lead", AC: "Agile Coach" };
 const ROLES = ["PO", "CL", "AC"] as const;
+
+// Returns map of personId → "⭐⭐" | "⭐" | "" per tribe
+function calcStars(
+  people: { id: string; finalScore: number }[]
+): Map<string, string> {
+  const sorted = [...people].sort((a, b) => b.finalScore - a.finalScore);
+  const n = sorted.length;
+  const highCount = Math.floor(n * 0.1);
+  const distCount = Math.floor(n * 0.1);
+  const map = new Map<string, string>();
+  sorted.forEach((p, i) => {
+    if (i < highCount) map.set(p.id, "⭐⭐");
+    else if (i < highCount + distCount) map.set(p.id, "⭐");
+    else map.set(p.id, "");
+  });
+  return map;
+}
 
 export default async function CalibrationPeriodPage({
   params,
@@ -18,7 +34,6 @@ export default async function CalibrationPeriodPage({
   const period = await prisma.period.findUnique({ where: { id: periodId } });
   if (!period) notFound();
 
-  // Tribes visible to this user that are in CALIBRATION or CLOSED
   const tribePeriodsVisible = await prisma.tribePeriod.findMany({
     where: {
       periodId,
@@ -30,7 +45,7 @@ export default async function CalibrationPeriodPage({
 
   const visibleTribeIds = tribePeriodsVisible.map(tp => tp.tribeId);
 
-  const [evaluatees, allEvaluations, finalScores, criteria, distinctions] = await Promise.all([
+  const [evaluatees, allEvaluations, finalScores, criteria] = await Promise.all([
     prisma.person.findMany({
       where: {
         evaluateeAssignments: { some: { periodId } },
@@ -59,21 +74,29 @@ export default async function CalibrationPeriodPage({
       select: { evaluateeId: true, finalScore: true },
     }),
     prisma.criterion.findMany({ where: { isActive: true }, orderBy: { code: "asc" } }),
-    prisma.distinction.findMany({
-      where: { periodId },
-      select: { evaluateeId: true, category: true },
-    }),
   ]);
 
   const evaluateeIds = new Set(evaluatees.map(e => e.id));
   const evaluations = allEvaluations.filter(e => evaluateeIds.has(e.evaluateeId));
 
   const finalScoreMap = new Map(finalScores.map(f => [f.evaluateeId, f.finalScore]));
-  const distinctionMap = new Map(distinctions.map(d => [d.evaluateeId, d.category as "HIGH_DISTINCTION" | "DISTINCTION" | "NORMAL"]));
   const evalMap = new Map<string, typeof evaluations>();
   for (const e of evaluations) {
     if (!evalMap.has(e.evaluateeId)) evalMap.set(e.evaluateeId, []);
     evalMap.get(e.evaluateeId)!.push(e);
+  }
+
+  // Calculate stars per tribe — only among people with final scores
+  const starMap = new Map<string, string>();
+  for (const tp of tribePeriodsVisible) {
+    const tribeWithScores = evaluatees
+      .filter(p => {
+        const tribeId = p.squad?.tribeId ?? p.functionalArea?.tribeId;
+        return tribeId === tp.tribeId && finalScoreMap.has(p.id);
+      })
+      .map(p => ({ id: p.id, finalScore: finalScoreMap.get(p.id)! }));
+    const stars = calcStars(tribeWithScores);
+    stars.forEach((v, k) => starMap.set(k, v));
   }
 
   // Stats: per role
@@ -129,23 +152,6 @@ export default async function CalibrationPeriodPage({
         : (prev * (cnt - 1) + s.score) / cnt;
     }
   }
-
-  // Build per-tribe people list for distinction panels (only those with final scores)
-  const tribeDistinctionData = tribePeriodsVisible.map(tp => {
-    const tribeEvaluatees = evaluatees.filter(p => {
-      const tribeId = p.squad?.tribeId ?? p.functionalArea?.tribeId;
-      return tribeId === tp.tribeId;
-    });
-    const withScores = tribeEvaluatees
-      .filter(p => finalScoreMap.has(p.id))
-      .map(p => ({
-        id: p.id,
-        name: p.name,
-        finalScore: finalScoreMap.get(p.id)!,
-        existingCategory: distinctionMap.get(p.id),
-      }));
-    return { tribePeriod: tp, people: withScores };
-  }).filter(t => t.people.length > 0);
 
   return (
     <div>
@@ -222,9 +228,9 @@ export default async function CalibrationPeriodPage({
                           );
                         })}
                         <td className="px-4 py-2.5 text-center">
-                          {overall !== null ? (
-                            <span className="text-xs font-bold text-purple-700">{overall.toFixed(2)}</span>
-                          ) : <span className="text-gray-300 text-xs">—</span>}
+                          {overall !== null
+                            ? <span className="text-xs font-bold text-purple-700">{overall.toFixed(2)}</span>
+                            : <span className="text-gray-300 text-xs">—</span>}
                         </td>
                       </tr>
                     );
@@ -289,7 +295,7 @@ export default async function CalibrationPeriodPage({
             </div>
           )}
 
-          {/* People list */}
+          {/* People list with inline stars */}
           <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
             <table className="w-full text-sm">
               <thead>
@@ -305,7 +311,7 @@ export default async function CalibrationPeriodPage({
                 {evaluatees.map(person => {
                   const evals = evalMap.get(person.id) ?? [];
                   const hasFinal = finalScoreMap.has(person.id);
-                  const dist = distinctionMap.get(person.id);
+                  const stars = starMap.get(person.id) ?? "";
                   return (
                     <tr key={person.id} className="hover:bg-gray-50">
                       <td className="px-5 py-3 font-medium text-gray-900">{person.name}</td>
@@ -332,11 +338,10 @@ export default async function CalibrationPeriodPage({
                       </td>
                       <td className="px-5 py-3">
                         {hasFinal ? (
-                          <div className="flex items-center gap-1.5">
+                          <div className="flex items-center gap-2">
                             <CheckCircle2 className="w-4 h-4 text-green-500" />
                             <span className="font-semibold text-gray-900">{finalScoreMap.get(person.id)?.toFixed(2)}</span>
-                            {dist === "HIGH_DISTINCTION" && <span className="text-sm">⭐⭐</span>}
-                            {dist === "DISTINCTION" && <span className="text-sm">⭐</span>}
+                            {stars && <span className="text-base leading-none">{stars}</span>}
                           </div>
                         ) : (
                           <div className="flex items-center gap-1.5">
@@ -357,18 +362,6 @@ export default async function CalibrationPeriodPage({
               </tbody>
             </table>
           </div>
-
-          {/* Distinction panels — one per tribe */}
-          {tribeDistinctionData.map(({ tribePeriod, people }) => (
-            <DistinctionPanel
-              key={tribePeriod.tribeId}
-              periodId={periodId}
-              tribeId={tribePeriod.tribeId}
-              tribeName={tribePeriod.tribe.name}
-              people={people}
-              isClosed={tribePeriod.status === "CLOSED"}
-            />
-          ))}
         </div>
       )}
     </div>
