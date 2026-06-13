@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { CheckCircle2, Circle } from "lucide-react";
+import { CloseTribeButton } from "./close-tribe-button";
 
 const ROLE_LABELS: Record<string, string> = { PO: "Product Owner", CL: "Chapter Lead", AC: "Agile Coach" };
 const ROLES = ["PO", "CL", "AC"] as const;
@@ -296,6 +297,17 @@ export default async function CalibrationPeriodPage({
               </table>
             </div>
           )}
+
+          {/* Tribe headers + close buttons */}
+          {tribePeriodsVisible.map(tp => tp.status === "CALIBRATION" && (
+            <div key={tp.tribeId} className="flex items-center justify-between bg-blue-50 border border-blue-100 rounded-xl px-5 py-3">
+              <div>
+                <span className="text-sm font-semibold text-blue-800">{tp.tribe.name}</span>
+                <span className="text-xs text-blue-500 ml-2">Calibration aşamasında</span>
+              </div>
+              <CloseTribeButton tribePeriodId={tp.id} />
+            </div>
+          ))}
 
           {/* People list with inline stars */}
           <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
