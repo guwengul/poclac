@@ -41,6 +41,22 @@ export default async function EvaluationsPage() {
     evalMap[`${e.periodId}-${e.evaluateeId}-${e.role}`] = e;
   }
 
+  // Past evaluations from last 3 closed periods
+  const pastEvals = await prisma.evaluation.findMany({
+    where: {
+      evaluatorId: person.id,
+      status: "SUBMITTED",
+      period: { status: "CLOSED" },
+    },
+    include: {
+      evaluatee: { select: { name: true } },
+      period: { select: { name: true, endDate: true } },
+      scores: { select: { score: true } },
+    },
+    orderBy: { period: { endDate: "desc" } },
+    take: 9,
+  });
+
   const ROLE_LABELS: Record<string, string> = { PO: "Product Owner", CL: "Chapter Lead", AC: "Agile Coach" };
 
   return (
@@ -115,6 +131,51 @@ export default async function EvaluationsPage() {
               })}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* Past evaluations */}
+      {pastEvals.length > 0 && (
+        <div className="mt-10">
+          <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Geçmiş Değerlendirmeler</h2>
+          <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-gray-50 border-b border-gray-100">
+                  <th className="text-left px-5 py-3 font-medium text-gray-600">Kişi</th>
+                  <th className="text-left px-5 py-3 font-medium text-gray-600">Rol</th>
+                  <th className="text-left px-5 py-3 font-medium text-gray-600">Periyot</th>
+                  <th className="text-right px-5 py-3 font-medium text-gray-600">Ort. Skor</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {pastEvals.map((e) => {
+                  const avg = e.scores.length > 0
+                    ? e.scores.reduce((s, sc) => s + sc.score, 0) / e.scores.length
+                    : null;
+                  return (
+                    <tr key={e.id} className="hover:bg-gray-50">
+                      <td className="px-5 py-3 font-medium text-gray-900">{e.evaluatee.name}</td>
+                      <td className="px-5 py-3">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600">
+                          {e.role}
+                        </span>
+                        <span className="ml-1.5 text-xs text-gray-400">{ROLE_LABELS[e.role]}</span>
+                      </td>
+                      <td className="px-5 py-3 text-gray-500">{e.period.name}</td>
+                      <td className="px-5 py-3 text-right">
+                        {avg !== null ? (
+                          <span className="font-semibold text-gray-700">{avg.toFixed(2)}</span>
+                        ) : (
+                          <span className="text-gray-300">—</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </div>
