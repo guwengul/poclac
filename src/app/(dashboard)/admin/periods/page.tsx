@@ -22,7 +22,8 @@ const STATUS_COLORS: Record<PeriodStatus, string> = {
 };
 
 export default async function PeriodsPage() {
-  try { await requireAdminOrHRPartner(); } catch { redirect("/dashboard"); }
+  let isAdmin = false;
+  try { ({ isAdmin } = await requireAdminOrHRPartner()); } catch { redirect("/dashboard"); }
 
   const periods = await prisma.period.findMany({
     orderBy: { createdAt: "desc" },
@@ -34,12 +35,14 @@ export default async function PeriodsPage() {
       <h1 className="text-2xl font-bold text-gray-900 mb-1">Periods</h1>
       <p className="text-sm text-gray-500 mb-8">Manage evaluation periods and assignments.</p>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-1">
-          <CreatePeriodForm />
-        </div>
+      <div className={`grid grid-cols-1 gap-6 ${isAdmin ? "lg:grid-cols-3" : ""}`}>
+        {isAdmin && (
+          <div className="lg:col-span-1">
+            <CreatePeriodForm />
+          </div>
+        )}
 
-        <div className="lg:col-span-2 space-y-3">
+        <div className={`space-y-3 ${isAdmin ? "lg:col-span-2" : ""}`}>
           {periods.length === 0 && (
             <div className="bg-white border border-gray-200 rounded-xl px-5 py-10 text-center text-sm text-gray-400">
               No periods yet. Create one to get started.
