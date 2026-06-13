@@ -18,7 +18,7 @@ export default function LoginPage() {
     setLoading(true);
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
-      setError("Geçersiz e-posta veya şifre.");
+      setError("Invalid email or password.");
       setLoading(false);
       return;
     }
@@ -47,19 +47,19 @@ export default function LoginPage() {
           </div>
 
           <h2 className="text-3xl font-bold text-white leading-snug mb-4">
-            Performans değerlendirmelerini<br />tek yerden yönet.
+            Manage performance reviews<br />in one place.
           </h2>
           <p className="text-white/60 text-sm leading-relaxed max-w-xs">
-            Kalibrasyon, distinction ve raporlama — tüm süreç şeffaf ve izlenebilir.
+            Calibration, distinction, and reporting — the full cycle, transparent and trackable.
           </p>
         </div>
 
         {/* Feature list */}
         <div className="relative z-10 space-y-3">
           {[
-            "Tribe bazlı kalibrasyon",
-            "Otomatik distinction hesaplama",
-            "Rol tabanlı erişim kontrolü",
+            "Tribe-level calibration",
+            "Automatic distinction calculation",
+            "Role-based access control",
           ].map(f => (
             <div key={f} className="flex items-center gap-3">
               <div className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0"
@@ -85,14 +85,14 @@ export default function LoginPage() {
 
         <div className="w-full max-w-sm">
           <div className="mb-8">
-            <h1 className="text-2xl font-bold text-gray-900 mb-1">Giriş Yap</h1>
-            <p className="text-sm text-gray-500">Hesabınıza erişmek için bilgilerinizi girin.</p>
+            <h1 className="text-2xl font-bold text-gray-900 mb-1">Sign In</h1>
+            <p className="text-sm text-gray-500">Enter your credentials to access your account.</p>
           </div>
 
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                E-posta
+                Email
               </label>
               <input
                 type="email"
@@ -100,14 +100,14 @@ export default function LoginPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 autoComplete="email"
-                placeholder="ad@sirket.com"
+                placeholder="you@company.com"
                 className="w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-100 transition-all"
               />
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                Şifre
+                Password
               </label>
               <input
                 type="password"
@@ -136,12 +136,12 @@ export default function LoginPage() {
               className="w-full mt-2 py-2.5 px-4 rounded-lg text-sm font-semibold text-white transition-opacity disabled:opacity-60"
               style={{ background: "var(--primary)" }}
             >
-              {loading ? "Giriş yapılıyor..." : "Giriş Yap →"}
+              {loading ? "Signing in..." : "Sign In →"}
             </button>
           </form>
 
           <p className="text-xs text-center text-gray-400 mt-8">
-            Yalnızca yetkili personele açıktır.
+            Access restricted to authorized personnel only.
           </p>
         </div>
       </div>

@@ -92,17 +92,17 @@ export default async function DashboardPage() {
 
   // Quick actions per role
   const adminActions = [
-    { href: "/admin/periods", icon: PlusCircle, label: "Periyot Oluştur", desc: "Yeni değerlendirme dönemi başlat", color: "purple" },
-    { href: "/admin/users", icon: Users, label: "Kişileri Yönet", desc: "Çalışan ekle, rol ata", color: "blue" },
-    { href: "/admin/organization", icon: Building2, label: "Organizasyon", desc: "Tribe, squad, alan yapılandır", color: "indigo" },
+    { href: "/admin/periods", icon: PlusCircle, label: "Create Period", desc: "Start a new evaluation cycle", color: "purple" },
+    { href: "/admin/users", icon: Users, label: "Manage People", desc: "Add employees, assign roles", color: "blue" },
+    { href: "/admin/organization", icon: Building2, label: "Organization", desc: "Configure tribes, squads, areas", color: "indigo" },
   ];
   const hrActions = [
-    { href: "/admin/periods", icon: CalendarRange, label: "Periyotlar", desc: "Tribe'ını aktifleştir veya calibration'a al", color: "purple" },
-    { href: "/calibration", icon: Star, label: "Calibration", desc: "Skorları gözden geçir ve finalleştir", color: "blue" },
-    { href: "/reports", icon: BarChart3, label: "Raporlar", desc: "Tribe sonuçlarını ve distinction'ları gör", color: "green" },
+    { href: "/admin/periods", icon: CalendarRange, label: "Periods", desc: "Activate your tribe or move to calibration", color: "purple" },
+    { href: "/calibration", icon: Star, label: "Calibration", desc: "Review and finalize scores", color: "blue" },
+    { href: "/reports", icon: BarChart3, label: "Reports", desc: "View tribe results and distinctions", color: "green" },
   ];
   const evaluatorActions = [
-    { href: "/evaluations", icon: ClipboardList, label: "Değerlendirmelerim", desc: "Bekleyen değerlendirmelerini tamamla", color: "purple" },
+    { href: "/evaluations", icon: ClipboardList, label: "My Evaluations", desc: "Complete your pending evaluations", color: "purple" },
   ];
 
   const quickActions = person.isAdmin ? adminActions : hrTribeIds.length > 0 ? hrActions : evaluatorActions;
@@ -110,13 +110,13 @@ export default async function DashboardPage() {
   return (
     <div>
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Hoş geldin, {person.name} 👋</h1>
-        <p className="text-sm text-gray-400 mt-1">Bugün ne yapmak istersin?</p>
+        <h1 className="text-2xl font-bold text-gray-900">Welcome back, {person.name} 👋</h1>
+        <p className="text-sm text-gray-400 mt-1">What would you like to do today?</p>
       </div>
 
       {/* Quick Actions — always visible */}
       <div className="mb-8">
-        <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Hızlı Erişim</h2>
+        <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Quick Access</h2>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {quickActions.map(action => (
             <Link key={action.href} href={action.href}
@@ -142,14 +142,14 @@ export default async function DashboardPage() {
       {/* Period content */}
       {openPeriods.length === 0 ? (
         <div className="bg-gray-50 border border-dashed border-gray-200 rounded-xl px-5 py-8 text-center text-sm text-gray-400">
-          Şu an aktif bir değerlendirme dönemi yok.
+          No active evaluation period right now.
           {person.isAdmin && (
             <div className="mt-3">
               <Link href="/admin/periods"
                 className="inline-flex items-center gap-1.5 text-xs font-medium px-4 py-2 rounded-lg text-white"
                 style={{ background: "var(--primary)" }}>
                 <PlusCircle className="w-3.5 h-3.5" />
-                Periyot Oluştur
+                Create Period
               </Link>
             </div>
           )}
@@ -159,11 +159,11 @@ export default async function DashboardPage() {
           {/* My evaluations summary */}
           {myAssignments.length > 0 && (
             <div>
-              <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Değerlendirmelerim</h2>
+              <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">My Evaluations</h2>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <StatCard icon={<ClipboardList className="w-5 h-5" />} label="Toplam" value={myAssignments.length} color="purple" />
-                <StatCard icon={<Clock className="w-5 h-5" />} label="Bekleyen" value={pending.length} color={pending.length > 0 ? "orange" : "gray"} />
-                <StatCard icon={<CheckCircle2 className="w-5 h-5" />} label="Tamamlanan" value={submitted} color="green" />
+                <StatCard icon={<ClipboardList className="w-5 h-5" />} label="Total" value={myAssignments.length} color="purple" />
+                <StatCard icon={<Clock className="w-5 h-5" />} label="Pending" value={pending.length} color={pending.length > 0 ? "orange" : "gray"} />
+                <StatCard icon={<CheckCircle2 className="w-5 h-5" />} label="Completed" value={submitted} color="green" />
               </div>
             </div>
           )}
@@ -171,7 +171,7 @@ export default async function DashboardPage() {
           {/* Pending list */}
           {pending.length > 0 && (
             <div>
-              <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Bekleyenler</h2>
+              <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Pending</h2>
               <div className="bg-white border border-gray-200 rounded-xl divide-y divide-gray-100">
                 {pending.map((a) => (
                   <div key={`${a.periodId}:${a.evaluateeId}:${a.role}`}
@@ -182,12 +182,12 @@ export default async function DashboardPage() {
                     </div>
                     <div className="flex items-center gap-3">
                       <span className="text-xs text-gray-400">
-                        Son {new Date(a.period.scoringDeadline).toLocaleDateString("tr-TR")}
+                        Due {new Date(a.period.scoringDeadline).toLocaleDateString("en-GB")}
                       </span>
                       <Link href="/evaluations"
                         className="text-xs font-medium px-3 py-1.5 rounded-lg text-white"
                         style={{ background: "var(--primary)" }}>
-                        Başla →
+                        Start →
                       </Link>
                     </div>
                   </div>
@@ -199,7 +199,7 @@ export default async function DashboardPage() {
           {/* Tribe progress */}
           {isManager && tribeStats.length > 0 && (
             <div>
-              <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Tribe İlerlemesi</h2>
+              <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Tribe Progress</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {tribeStats.map((t, i) => {
                   const pct = t.total === 0 ? 0 : Math.round((t.submitted / t.total) * 100);
