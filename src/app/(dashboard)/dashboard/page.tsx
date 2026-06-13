@@ -109,8 +109,10 @@ export default async function DashboardPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-gray-900 mb-1">Hoş geldin, {person.name}</h1>
-      <p className="text-sm text-gray-500 mb-8">Performance Evaluation & Calibration Platform</p>
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold text-gray-900">Hoş geldin, {person.name} 👋</h1>
+        <p className="text-sm text-gray-400 mt-1">Bugün ne yapmak istersin?</p>
+      </div>
 
       {/* Quick Actions — always visible */}
       <div className="mb-8">
