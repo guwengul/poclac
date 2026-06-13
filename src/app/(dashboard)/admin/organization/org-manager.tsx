@@ -500,7 +500,7 @@ function TribeCard({ tribe, people, onRefresh }: { tribe: Tribe; people: Person[
   );
 }
 
-export function OrgManager({ tribes, people }: { tribes: Tribe[]; people: Person[] }) {
+export function OrgManager({ tribes, people, isAdmin = true }: { tribes: Tribe[]; people: Person[]; isAdmin?: boolean }) {
   const router = useRouter();
   const [showNewTribe, setShowNewTribe] = useState(false);
   const [tribeForm, setTribeForm] = useState({
@@ -525,11 +525,13 @@ export function OrgManager({ tribes, people }: { tribes: Tribe[]; people: Person
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-end">
-        <Button onClick={() => setShowNewTribe(!showNewTribe)} variant="outline" size="sm">
-          <Plus className="w-4 h-4 mr-1" /> New Tribe
-        </Button>
-      </div>
+      {isAdmin && (
+        <div className="flex justify-end">
+          <Button onClick={() => setShowNewTribe(!showNewTribe)} variant="outline" size="sm">
+            <Plus className="w-4 h-4 mr-1" /> New Tribe
+          </Button>
+        </div>
+      )}
 
       {showNewTribe && (
         <form onSubmit={createTribe} className="bg-white border border-gray-200 rounded-xl p-5 space-y-3">
