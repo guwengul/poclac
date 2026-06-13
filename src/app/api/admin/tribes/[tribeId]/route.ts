@@ -9,7 +9,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
   }
   const { tribeId } = await params;
-  const { name, tribeLeadId, tribeTechLeadId, tribeHRPartnerId } = await req.json();
+  const { name, tribeLeadId, tribeTechLeadId } = await req.json();
 
   const tribe = await prisma.tribe.update({
     where: { id: tribeId },
@@ -17,7 +17,6 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       name: name ?? undefined,
       tribeLeadId: tribeLeadId ?? null,
       tribeTechLeadId: tribeTechLeadId ?? null,
-      tribeHRPartnerId: tribeHRPartnerId ?? null,
     },
   });
   return NextResponse.json({ tribe });

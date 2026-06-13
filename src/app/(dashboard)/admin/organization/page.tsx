@@ -9,9 +9,9 @@ export default async function OrganizationPage() {
   const [tribes, people] = await Promise.all([
     prisma.tribe.findMany({
       include: {
-        tribeLead:      { select: { id: true, name: true } },
-        tribeTechLead:  { select: { id: true, name: true } },
-        tribeHRPartner: { select: { id: true, name: true } },
+        tribeLead:     { select: { id: true, name: true } },
+        tribeTechLead: { select: { id: true, name: true } },
+        hrPartners:    { include: { person: { select: { id: true, name: true } } } },
         squads: {
           include: {
             productOwner: { select: { id: true, name: true } },

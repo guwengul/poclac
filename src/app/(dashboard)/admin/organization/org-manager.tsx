@@ -19,9 +19,9 @@ type Squad = {
 };
 type Tribe = {
   id: string; name: string;
-  tribeLeadId?: string | null;      tribeLead?:      { id: string; name: string } | null;
-  tribeTechLeadId?: string | null;  tribeTechLead?:  { id: string; name: string } | null;
-  tribeHRPartnerId?: string | null; tribeHRPartner?: { id: string; name: string } | null;
+  tribeLeadId?: string | null;     tribeLead?:     { id: string; name: string } | null;
+  tribeTechLeadId?: string | null; tribeTechLead?: { id: string; name: string } | null;
+  hrPartners: { id: string; personId: string; person: { id: string; name: string } }[];
   squads: Squad[];
   functionalAreas: FunctionalArea[];
 };
@@ -277,8 +277,9 @@ function TribeCard({ tribe, people, onRefresh }: { tribe: Tribe; people: Person[
   const [roles, setRoles] = useState({
     tribeLeadId: tribe.tribeLeadId ?? "",
     tribeTechLeadId: tribe.tribeTechLeadId ?? "",
-    tribeHRPartnerId: tribe.tribeHRPartnerId ?? "",
   });
+  const [addingHR, setAddingHR] = useState(false);
+  const [hrPersonId, setHrPersonId] = useState("");
   const [saving, setSaving] = useState(false);
   const [addingSquad, setAddingSquad] = useState(false);
   const [squadForm, setSquadForm] = useState({ name: "", productOwnerId: "", agileCoachId: "" });
@@ -293,7 +294,6 @@ function TribeCard({ tribe, people, onRefresh }: { tribe: Tribe; people: Person[
       body: JSON.stringify({
         tribeLeadId: roles.tribeLeadId || null,
         tribeTechLeadId: roles.tribeTechLeadId || null,
-        tribeHRPartnerId: roles.tribeHRPartnerId || null,
       }),
     });
     setSaving(false); setEditingRoles(false);
@@ -352,7 +352,7 @@ function TribeCard({ tribe, people, onRefresh }: { tribe: Tribe; people: Person[
         <>
           <div className="px-5 py-4 border-b border-gray-100">
             {editingRoles ? (
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-gray-500 mb-1">Tribe Lead (TL)</label>
                   <PersonSelect value={roles.tribeLeadId} onChange={v => setRoles(r => ({ ...r, tribeLeadId: v }))} people={people} placeholder="Not assigned" />
@@ -361,13 +361,9 @@ function TribeCard({ tribe, people, onRefresh }: { tribe: Tribe; people: Person[
                   <label className="block text-xs font-medium text-gray-500 mb-1">Tribe Tech Lead (TTL)</label>
                   <PersonSelect value={roles.tribeTechLeadId} onChange={v => setRoles(r => ({ ...r, tribeTechLeadId: v }))} people={people} placeholder="Not assigned" />
                 </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1">HR Partner</label>
-                  <PersonSelect value={roles.tribeHRPartnerId} onChange={v => setRoles(r => ({ ...r, tribeHRPartnerId: v }))} people={people} placeholder="Not assigned" />
-                </div>
-                <div className="sm:col-span-3">
+                <div className="sm:col-span-2">
                   <Button onClick={saveRoles} disabled={saving} size="sm" style={{ background: "var(--primary)" }}>
-                    {saving ? "Saving..." : "Save Roles"}
+                    {saving ? "Saving..." : "Save"}
                   </Button>
                 </div>
               </div>
@@ -375,9 +371,56 @@ function TribeCard({ tribe, people, onRefresh }: { tribe: Tribe; people: Person[
               <div className="flex flex-wrap gap-6">
                 <RoleChip label="TL" name={tribe.tribeLead?.name} />
                 <RoleChip label="TTL" name={tribe.tribeTechLead?.name} />
-                <RoleChip label="HR Partner" name={tribe.tribeHRPartner?.name} />
               </div>
             )}
+
+            {/* HR Partners */}
+            <div className="mt-4 pt-4 border-t border-gray-100">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-semibold text-gray-500">HR Partners</span>
+                <button onClick={() => setAddingHR(!addingHR)}
+                  className="text-xs text-purple-600 hover:text-purple-800 flex items-center gap-0.5">
+                  <Plus className="w-3 h-3" /> Add
+                </button>
+              </div>
+              {addingHR && (
+                <div className="flex gap-2 mb-2">
+                  <PersonSelect
+                    value={hrPersonId}
+                    onChange={setHrPersonId}
+                    people={people.filter(p => !tribe.hrPartners.some(h => h.personId === p.id))}
+                    placeholder="Select HR Partner..." />
+                  <Button size="sm" disabled={!hrPersonId} style={{ background: "var(--primary)" }}
+                    onClick={async () => {
+                      await fetch(`/api/admin/tribes/${tribe.id}/hr-partners`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ personId: hrPersonId }),
+                      });
+                      setHrPersonId(""); setAddingHR(false); onRefresh();
+                    }}>Add</Button>
+                  <Button size="sm" variant="ghost" onClick={() => setAddingHR(false)}>Cancel</Button>
+                </div>
+              )}
+              <div className="flex flex-wrap gap-1.5">
+                {tribe.hrPartners.length === 0 && <p className="text-xs text-gray-300 italic">None assigned</p>}
+                {tribe.hrPartners.map(h => (
+                  <span key={h.id} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-orange-50 border border-orange-200 text-xs text-orange-700">
+                    {h.person.name}
+                    <button onClick={async () => {
+                      await fetch(`/api/admin/tribes/${tribe.id}/hr-partners`, {
+                        method: "DELETE",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ personId: h.personId }),
+                      });
+                      onRefresh();
+                    }} className="text-orange-300 hover:text-red-500">
+                      <X className="w-2.5 h-2.5" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            </div>
           </div>
 
           <div className="px-5 py-4 grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -461,7 +504,7 @@ export function OrgManager({ tribes, people }: { tribes: Tribe[]; people: Person
   const router = useRouter();
   const [showNewTribe, setShowNewTribe] = useState(false);
   const [tribeForm, setTribeForm] = useState({
-    name: "", tribeLeadId: "", tribeTechLeadId: "", tribeHRPartnerId: "",
+    name: "", tribeLeadId: "", tribeTechLeadId: "",
   });
 
   async function createTribe(e: React.FormEvent) {
@@ -473,10 +516,9 @@ export function OrgManager({ tribes, people }: { tribes: Tribe[]; people: Person
         name: tribeForm.name,
         tribeLeadId: tribeForm.tribeLeadId || null,
         tribeTechLeadId: tribeForm.tribeTechLeadId || null,
-        tribeHRPartnerId: tribeForm.tribeHRPartnerId || null,
       }),
     });
-    setTribeForm({ name: "", tribeLeadId: "", tribeTechLeadId: "", tribeHRPartnerId: "" });
+    setTribeForm({ name: "", tribeLeadId: "", tribeTechLeadId: "" });
     setShowNewTribe(false);
     router.refresh();
   }
@@ -497,7 +539,7 @@ export function OrgManager({ tribes, people }: { tribes: Tribe[]; people: Person
               className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-purple-500"
               placeholder="e.g. Payments Tribe" />
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">Tribe Lead (TL)</label>
               <PersonSelect value={tribeForm.tribeLeadId} onChange={v => setTribeForm(f => ({ ...f, tribeLeadId: v }))} people={people} placeholder="Assign later..." />
@@ -506,11 +548,8 @@ export function OrgManager({ tribes, people }: { tribes: Tribe[]; people: Person
               <label className="block text-xs font-medium text-gray-600 mb-1">Tribe Tech Lead (TTL)</label>
               <PersonSelect value={tribeForm.tribeTechLeadId} onChange={v => setTribeForm(f => ({ ...f, tribeTechLeadId: v }))} people={people} placeholder="Assign later..." />
             </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">HR Partner</label>
-              <PersonSelect value={tribeForm.tribeHRPartnerId} onChange={v => setTribeForm(f => ({ ...f, tribeHRPartnerId: v }))} people={people} placeholder="Assign later..." />
-            </div>
           </div>
+          <p className="text-xs text-gray-400">HR Partners can be added after creation from the tribe card.</p>
           <div className="flex gap-2">
             <Button type="submit" style={{ background: "var(--primary)" }}>Create Tribe</Button>
             <Button type="button" variant="ghost" onClick={() => setShowNewTribe(false)}>Cancel</Button>

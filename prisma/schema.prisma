@@ -74,7 +74,7 @@ model Person {
   squad                 Squad?                @relation("SquadMembers", fields: [squadId], references: [id])
   tribeLeads            Tribe[]               @relation("TribeLead")
   tribeTechLeads        Tribe[]               @relation("TribeTechLead")
-  tribeHRPartners       Tribe[]               @relation("TribeHRPartner")
+  tribeHRPartners       TribeHRPartner[]
   squadsAsPO            Squad[]               @relation("SquadPO")
   squadsAsAC            Squad[]               @relation("SquadAC")
   chapterLeadAreas      FunctionalArea[]      @relation("AreaChapterLead")
@@ -93,20 +93,30 @@ model Person {
 }
 
 model Tribe {
-  id               String   @id @default(cuid())
-  name             String
-  tribeLeadId      String?
-  tribeTechLeadId  String?
-  tribeHRPartnerId String?
-  createdAt        DateTime @default(now())
+  id              String   @id @default(cuid())
+  name            String
+  tribeLeadId     String?
+  tribeTechLeadId String?
+  createdAt       DateTime @default(now())
 
-  tribeLead       Person?  @relation("TribeLead", fields: [tribeLeadId], references: [id])
-  tribeTechLead   Person?  @relation("TribeTechLead", fields: [tribeTechLeadId], references: [id])
-  tribeHRPartner  Person?  @relation("TribeHRPartner", fields: [tribeHRPartnerId], references: [id])
+  tribeLead     Person?  @relation("TribeLead", fields: [tribeLeadId], references: [id])
+  tribeTechLead Person?  @relation("TribeTechLead", fields: [tribeTechLeadId], references: [id])
 
+  hrPartners      TribeHRPartner[]
   squads          Squad[]
   functionalAreas FunctionalArea[]
   tribePeriods    TribePeriod[]
+}
+
+model TribeHRPartner {
+  id       String @id @default(cuid())
+  tribeId  String
+  personId String
+
+  tribe  Tribe  @relation(fields: [tribeId], references: [id], onDelete: Cascade)
+  person Person @relation(fields: [personId], references: [id], onDelete: Cascade)
+
+  @@unique([tribeId, personId])
 }
 
 model FunctionalArea {

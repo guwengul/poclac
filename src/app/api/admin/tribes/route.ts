@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
   }
 
-  const { name, tribeLeadId, tribeTechLeadId, tribeHRPartnerId } = await req.json();
+  const { name, tribeLeadId, tribeTechLeadId, tribeHRPartnerIds } = await req.json();
   if (!name) {
     return NextResponse.json({ error: "Name is required." }, { status: 400 });
   }
@@ -33,7 +33,9 @@ export async function POST(req: NextRequest) {
       name,
       tribeLeadId: tribeLeadId ?? null,
       tribeTechLeadId: tribeTechLeadId ?? null,
-      tribeHRPartnerId: tribeHRPartnerId ?? null,
+      hrPartners: tribeHRPartnerIds?.length
+        ? { create: tribeHRPartnerIds.map((personId: string) => ({ personId })) }
+        : undefined,
     },
   });
   return NextResponse.json({ tribe }, { status: 201 });
