@@ -335,15 +335,8 @@ export default async function CalibrationPeriodPage({
                           <div className="flex items-center gap-1.5">
                             <CheckCircle2 className="w-4 h-4 text-green-500" />
                             <span className="font-semibold text-gray-900">{finalScoreMap.get(person.id)?.toFixed(2)}</span>
-                            {dist && (
-                              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                                dist === "HIGH_DISTINCTION" ? "bg-amber-100 text-amber-700"
-                                : dist === "DISTINCTION" ? "bg-blue-100 text-blue-700"
-                                : "bg-gray-100 text-gray-500"
-                              }`}>
-                                {dist === "HIGH_DISTINCTION" ? "HD" : dist === "DISTINCTION" ? "D" : "N"}
-                              </span>
-                            )}
+                            {dist === "HIGH_DISTINCTION" && <span className="text-sm">⭐⭐</span>}
+                            {dist === "DISTINCTION" && <span className="text-sm">⭐</span>}
                           </div>
                         ) : (
                           <div className="flex items-center gap-1.5">
