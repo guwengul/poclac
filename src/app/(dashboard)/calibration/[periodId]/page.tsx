@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { CheckCircle2, Circle } from "lucide-react";
+import { DistinctionPanel } from "./distinction-panel";
 
 const ROLE_LABELS: Record<string, string> = { PO: "Product Owner", CL: "Chapter Lead", AC: "Agile Coach" };
 const ROLES = ["PO", "CL", "AC"] as const;
@@ -17,13 +18,19 @@ export default async function CalibrationPeriodPage({
   const period = await prisma.period.findUnique({ where: { id: periodId } });
   if (!period) notFound();
 
-  const calibrationTribeIds = auth.isAdmin
-    ? (await prisma.tribePeriod.findMany({ where: { periodId, status: "CALIBRATION" }, select: { tribeId: true } })).map(t => t.tribeId)
-    : (await prisma.tribePeriod.findMany({ where: { periodId, status: "CALIBRATION", tribeId: { in: auth.hrTribeIds } }, select: { tribeId: true } })).map(t => t.tribeId);
+  // Tribes visible to this user that are in CALIBRATION or CLOSED
+  const tribePeriodsVisible = await prisma.tribePeriod.findMany({
+    where: {
+      periodId,
+      status: { in: ["CALIBRATION", "CLOSED"] },
+      ...(auth.isAdmin ? {} : { tribeId: { in: auth.hrTribeIds } }),
+    },
+    include: { tribe: { select: { id: true, name: true } } },
+  });
 
-  const visibleTribeIds = calibrationTribeIds;
+  const visibleTribeIds = tribePeriodsVisible.map(tp => tp.tribeId);
 
-  const [evaluatees, allEvaluations, finalScores, criteria] = await Promise.all([
+  const [evaluatees, allEvaluations, finalScores, criteria, distinctions] = await Promise.all([
     prisma.person.findMany({
       where: {
         evaluateeAssignments: { some: { periodId } },
@@ -32,7 +39,11 @@ export default async function CalibrationPeriodPage({
           { functionalArea: { tribeId: { in: visibleTribeIds } } },
         ],
       },
-      select: { id: true, name: true, functionalArea: { select: { name: true } }, squad: { select: { name: true } } },
+      select: {
+        id: true, name: true,
+        functionalArea: { select: { name: true, tribeId: true } },
+        squad: { select: { name: true, tribeId: true } },
+      },
       orderBy: { name: "asc" },
     }),
     prisma.evaluation.findMany({
@@ -48,19 +59,24 @@ export default async function CalibrationPeriodPage({
       select: { evaluateeId: true, finalScore: true },
     }),
     prisma.criterion.findMany({ where: { isActive: true }, orderBy: { code: "asc" } }),
+    prisma.distinction.findMany({
+      where: { periodId },
+      select: { evaluateeId: true, category: true },
+    }),
   ]);
 
   const evaluateeIds = new Set(evaluatees.map(e => e.id));
   const evaluations = allEvaluations.filter(e => evaluateeIds.has(e.evaluateeId));
 
   const finalScoreMap = new Map(finalScores.map(f => [f.evaluateeId, f.finalScore]));
+  const distinctionMap = new Map(distinctions.map(d => [d.evaluateeId, d.category as "HIGH_DISTINCTION" | "DISTINCTION" | "NORMAL"]));
   const evalMap = new Map<string, typeof evaluations>();
   for (const e of evaluations) {
     if (!evalMap.has(e.evaluateeId)) evalMap.set(e.evaluateeId, []);
     evalMap.get(e.evaluateeId)!.push(e);
   }
 
-  // Stats: per evaluator (role) — how many submitted, avg score given
+  // Stats: per role
   const byRole: Record<string, { submitted: number; total: number; avgScore: number | null }> = {};
   for (const role of ROLES) {
     const roleEvals = evaluations.filter(e => e.role === role);
@@ -73,7 +89,7 @@ export default async function CalibrationPeriodPage({
     };
   }
 
-  // Stats: per criterion — avg score per role
+  // Stats: per criterion per role
   const byCriterion: Record<string, Record<string, number | null>> = {};
   for (const c of criteria) {
     byCriterion[c.id] = {};
@@ -87,7 +103,7 @@ export default async function CalibrationPeriodPage({
 
   const totalFinalized = evaluatees.filter(e => finalScoreMap.has(e.id)).length;
 
-  // Stats: per evaluator person — role, # evaluated, avg given per criterion
+  // Stats: per evaluator person
   const byEvaluator = new Map<string, {
     name: string; role: string;
     evaluateeCount: number;
@@ -97,10 +113,7 @@ export default async function CalibrationPeriodPage({
   for (const ev of evaluations.filter(e => e.status === "SUBMITTED")) {
     const key = `${ev.evaluatorId}:${ev.role}`;
     if (!byEvaluator.has(key)) {
-      byEvaluator.set(key, {
-        name: ev.evaluator.name, role: ev.role,
-        evaluateeCount: 0, avgTotal: null, avgByCriterion: {},
-      });
+      byEvaluator.set(key, { name: ev.evaluator.name, role: ev.role, evaluateeCount: 0, avgTotal: null, avgByCriterion: {} });
     }
     const entry = byEvaluator.get(key)!;
     entry.evaluateeCount++;
@@ -116,6 +129,23 @@ export default async function CalibrationPeriodPage({
         : (prev * (cnt - 1) + s.score) / cnt;
     }
   }
+
+  // Build per-tribe people list for distinction panels (only those with final scores)
+  const tribeDistinctionData = tribePeriodsVisible.map(tp => {
+    const tribeEvaluatees = evaluatees.filter(p => {
+      const tribeId = p.squad?.tribeId ?? p.functionalArea?.tribeId;
+      return tribeId === tp.tribeId;
+    });
+    const withScores = tribeEvaluatees
+      .filter(p => finalScoreMap.has(p.id))
+      .map(p => ({
+        id: p.id,
+        name: p.name,
+        finalScore: finalScoreMap.get(p.id)!,
+        existingCategory: distinctionMap.get(p.id),
+      }));
+    return { tribePeriod: tp, people: withScores };
+  }).filter(t => t.people.length > 0);
 
   return (
     <div>
@@ -275,6 +305,7 @@ export default async function CalibrationPeriodPage({
                 {evaluatees.map(person => {
                   const evals = evalMap.get(person.id) ?? [];
                   const hasFinal = finalScoreMap.has(person.id);
+                  const dist = distinctionMap.get(person.id);
                   return (
                     <tr key={person.id} className="hover:bg-gray-50">
                       <td className="px-5 py-3 font-medium text-gray-900">{person.name}</td>
@@ -304,6 +335,15 @@ export default async function CalibrationPeriodPage({
                           <div className="flex items-center gap-1.5">
                             <CheckCircle2 className="w-4 h-4 text-green-500" />
                             <span className="font-semibold text-gray-900">{finalScoreMap.get(person.id)?.toFixed(2)}</span>
+                            {dist && (
+                              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                                dist === "HIGH_DISTINCTION" ? "bg-amber-100 text-amber-700"
+                                : dist === "DISTINCTION" ? "bg-blue-100 text-blue-700"
+                                : "bg-gray-100 text-gray-500"
+                              }`}>
+                                {dist === "HIGH_DISTINCTION" ? "HD" : dist === "DISTINCTION" ? "D" : "N"}
+                              </span>
+                            )}
                           </div>
                         ) : (
                           <div className="flex items-center gap-1.5">
@@ -324,6 +364,18 @@ export default async function CalibrationPeriodPage({
               </tbody>
             </table>
           </div>
+
+          {/* Distinction panels — one per tribe */}
+          {tribeDistinctionData.map(({ tribePeriod, people }) => (
+            <DistinctionPanel
+              key={tribePeriod.tribeId}
+              periodId={periodId}
+              tribeId={tribePeriod.tribeId}
+              tribeName={tribePeriod.tribe.name}
+              people={people}
+              isClosed={tribePeriod.status === "CLOSED"}
+            />
+          ))}
         </div>
       )}
     </div>

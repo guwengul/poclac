@@ -16,11 +16,10 @@ export default async function CalibrationPage() {
   let auth: Awaited<ReturnType<typeof requireAdminOrHRPartner>>;
   try { auth = await requireAdminOrHRPartner(); } catch { redirect("/dashboard"); }
 
-  // For HR Partners: show periods where their tribe is in CALIBRATION
-  // For Admins: show all periods in CALIBRATION or SCORING_OPEN
+  // Show periods where at least one tribe is in CALIBRATION or CLOSED (but not all CLOSED)
   const tribePeriods = await prisma.tribePeriod.findMany({
     where: {
-      status: "CALIBRATION",
+      status: { in: ["CALIBRATION", "CLOSED"] },
       ...(auth.isAdmin ? {} : { tribeId: { in: auth.hrTribeIds } }),
     },
     select: { periodId: true },

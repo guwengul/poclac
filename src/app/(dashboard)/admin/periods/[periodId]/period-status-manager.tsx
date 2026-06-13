@@ -7,16 +7,16 @@ import { PeriodStatus } from "@prisma/client";
 
 const TRANSITIONS: Record<PeriodStatus, PeriodStatus | null> = {
   DRAFT: "SCORING_OPEN",
-  SCORING_OPEN: "CALIBRATION",
-  CALIBRATION: "DISTINCTION",
+  SCORING_OPEN: "CLOSED",
+  CALIBRATION: "CLOSED",
   DISTINCTION: "CLOSED",
   CLOSED: null,
 };
 
 const NEXT_LABELS: Record<PeriodStatus, string> = {
   DRAFT: "Open Scoring",
-  SCORING_OPEN: "Move to Calibration",
-  CALIBRATION: "Move to Distinction",
+  SCORING_OPEN: "Close Period",
+  CALIBRATION: "Close Period",
   DISTINCTION: "Close Period",
   CLOSED: "",
 };

@@ -36,15 +36,10 @@ enum EvaluationStatus {
   SUBMITTED
 }
 
-enum DistinctionType {
-  TOP10
-  TOP20
-}
-
-enum DistinctionApprovalStatus {
-  PENDING
-  APPROVED
-  LOCKED
+enum DistinctionCategory {
+  HIGH_DISTINCTION
+  DISTINCTION
+  NORMAL
 }
 
 enum ConstraintMode {
@@ -87,8 +82,6 @@ model Person {
   finalScoresLocked     FinalScore[]          @relation("LockedByTL")
   finalScoresReceived   FinalScore[]          @relation("EvaluateeFinalScore")
   distinctionsReceived  Distinction[]         @relation("DistinctionEvaluatee")
-  distinctionsMarked    Distinction[]         @relation("DistinctionMarkedBy")
-  distinctionsApproved  Distinction[]         @relation("DistinctionApprovedBy")
   tribePeriodsActivated TribePeriod[]         @relation("TribePeriodActivatedBy")
   auditLogs             AuditLog[]
 }
@@ -107,6 +100,7 @@ model Tribe {
   squads          Squad[]
   functionalAreas FunctionalArea[]
   tribePeriods    TribePeriod[]
+  distinctions    Distinction[]
 }
 
 model TribeHRPartner {
@@ -328,20 +322,17 @@ model FinalScore {
 // ─── Distinction ──────────────────────────────────────────────────────────────
 
 model Distinction {
-  id             String                    @id @default(cuid())
-  periodId       String
-  evaluateeId    String
-  type           DistinctionType
-  approvalStatus DistinctionApprovalStatus @default(PENDING)
-  markedById     String?
-  approvedById   String?
-  createdAt      DateTime                  @default(now())
-  updatedAt      DateTime                  @updatedAt
+  id          String              @id @default(cuid())
+  periodId    String
+  tribeId     String
+  evaluateeId String
+  category    DistinctionCategory
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
 
-  period     Period  @relation(fields: [periodId], references: [id])
-  evaluatee  Person  @relation("DistinctionEvaluatee", fields: [evaluateeId], references: [id])
-  markedBy   Person? @relation("DistinctionMarkedBy", fields: [markedById], references: [id])
-  approvedBy Person? @relation("DistinctionApprovedBy", fields: [approvedById], references: [id])
+  period    Period  @relation(fields: [periodId], references: [id])
+  tribe     Tribe   @relation(fields: [tribeId], references: [id])
+  evaluatee Person  @relation("DistinctionEvaluatee", fields: [evaluateeId], references: [id])
 
   @@unique([periodId, evaluateeId])
 }

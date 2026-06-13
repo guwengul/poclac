@@ -45,6 +45,22 @@ export function CalibrationScoreEditor({
   const [finalScore, setFinalScore] = useState<number | null>(existingFinalScore);
   const [finalizing, setFinalizing] = useState(false);
 
+  function hasChanges(ev: Evaluator) {
+    const orig = initialEvaluators.find(e => e.evaluationId === ev.evaluationId);
+    if (!orig) return false;
+    return ev.scores.some(s => {
+      const origScore = orig.scores.find(o => o.criterionId === s.criterionId)?.score;
+      return origScore !== s.score;
+    });
+  }
+
+  function revertEvaluator(evaluationId: string) {
+    const orig = initialEvaluators.find(e => e.evaluationId === evaluationId);
+    if (!orig) return;
+    setEvaluators(evs => evs.map(ev => ev.evaluationId !== evaluationId ? ev : { ...ev, scores: orig.scores.map(s => ({ ...s })) }));
+    setSaved(null);
+  }
+
   function getScore(ev: Evaluator, criterionId: string) {
     return ev.scores.find(s => s.criterionId === criterionId)?.score ?? null;
   }
@@ -179,11 +195,18 @@ export function CalibrationScoreEditor({
               <span className="text-gray-400 ml-2 text-sm">— {ROLE_LABELS[ev.role]}</span>
               <span className="ml-3 text-sm text-gray-600">{ev.evaluatorName}</span>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               {ev.status !== "SUBMITTED" && (
                 <span className="text-xs text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">Not submitted</span>
               )}
-              {ev.status === "SUBMITTED" && (
+              {ev.status === "SUBMITTED" && finalScore === null && hasChanges(ev) && (
+                <button
+                  onClick={() => revertEvaluator(ev.evaluationId)}
+                  className="text-xs text-gray-400 hover:text-gray-600 underline underline-offset-2">
+                  Revert to original
+                </button>
+              )}
+              {ev.status === "SUBMITTED" && finalScore === null && (
                 <button
                   onClick={() => saveEvaluator(ev)}
                   disabled={saving === ev.evaluationId}
@@ -212,7 +235,7 @@ export function CalibrationScoreEditor({
                     )}
                   </div>
                   <div className="flex items-center gap-1.5 shrink-0">
-                    {ev.status === "SUBMITTED"
+                    {ev.status === "SUBMITTED" && finalScore === null
                       ? [1, 2, 3, 4, 5].map(n => (
                           <button key={n} onClick={() => setScore(ev.evaluationId, c.id, n)}
                             title={SCORE_LABELS[n]}
