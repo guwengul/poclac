@@ -25,13 +25,18 @@ export function ScoringForm({
   evaluationId: string;
   evaluatee: { id: string; name: string; chapter: string | null };
   criteria: Criterion[];
-  existingScores: { criterionId: string; score: number }[];
+  existingScores: { criterionId: string; score: number; comment: string | null }[];
   isSubmitted: boolean;
 }) {
   const router = useRouter();
   const [scores, setScores] = useState<Record<string, number>>(() => {
     const m: Record<string, number> = {};
     for (const s of existingScores) m[s.criterionId] = s.score;
+    return m;
+  });
+  const [comments, setComments] = useState<Record<string, string>>(() => {
+    const m: Record<string, string> = {};
+    for (const s of existingScores) if (s.comment) m[s.criterionId] = s.comment;
     return m;
   });
   const [saving, setSaving] = useState(false);
@@ -46,12 +51,25 @@ export function ScoringForm({
     setSaved(false);
   }
 
+  function setComment(criterionId: string, comment: string) {
+    setComments((c) => ({ ...c, [criterionId]: comment }));
+    setSaved(false);
+  }
+
+  function buildPayload() {
+    return Object.entries(scores).map(([criterionId, score]) => ({
+      criterionId,
+      score,
+      comment: comments[criterionId] ?? null,
+    }));
+  }
+
   async function saveDraft() {
     setSaving(true); setError("");
     const res = await fetch(`/api/evaluations/${evaluationId}/scores`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ scores: Object.entries(scores).map(([criterionId, score]) => ({ criterionId, score })) }),
+      body: JSON.stringify({ scores: buildPayload() }),
     });
     setSaving(false);
     if (!res.ok) { setError((await res.json()).error); return; }
@@ -60,12 +78,11 @@ export function ScoringForm({
 
   async function submit() {
     if (!allScored) { setError("Please score all criteria before submitting."); return; }
-    // Save first, then submit
     setSaving(true); setError("");
     const saveRes = await fetch(`/api/evaluations/${evaluationId}/scores`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ scores: Object.entries(scores).map(([criterionId, score]) => ({ criterionId, score })) }),
+      body: JSON.stringify({ scores: buildPayload() }),
     });
     setSaving(false);
     if (!saveRes.ok) { setError((await saveRes.json()).error); return; }
@@ -86,12 +103,19 @@ export function ScoringForm({
         </div>
         <div className="bg-white border border-gray-200 rounded-xl divide-y divide-gray-100">
           {criteria.map((c) => (
-            <div key={c.id} className="px-5 py-4 flex items-center justify-between">
-              <div>
-                <p className="font-medium text-gray-900">{c.code} — {c.name}</p>
-                {c.description && <p className="text-xs text-gray-400 mt-0.5">{c.description}</p>}
+            <div key={c.id} className="px-5 py-4">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="font-medium text-gray-900">{c.code} — {c.name}</p>
+                  {c.description && <p className="text-xs text-gray-400 mt-0.5">{c.description}</p>}
+                </div>
+                <ScoreDisplay score={scores[c.id]} />
               </div>
-              <ScoreDisplay score={scores[c.id]} />
+              {comments[c.id] && (
+                <p className="mt-2 text-sm text-gray-500 italic border-l-2 border-gray-200 pl-3">
+                  {comments[c.id]}
+                </p>
+              )}
             </div>
           ))}
         </div>
@@ -112,7 +136,7 @@ export function ScoringForm({
               <p className="font-semibold text-gray-900">{c.code} — {c.name}</p>
               {c.description && <p className="text-xs text-gray-500 mt-0.5">{c.description}</p>}
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 mb-3">
               {[1, 2, 3, 4, 5].map((n) => (
                 <button
                   key={n}
@@ -134,6 +158,13 @@ export function ScoringForm({
                 </span>
               )}
             </div>
+            <textarea
+              value={comments[c.id] ?? ""}
+              onChange={(e) => setComment(c.id, e.target.value)}
+              placeholder="Add a comment (optional)..."
+              rows={2}
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-700 placeholder-gray-300 outline-none focus:border-purple-400 resize-none"
+            />
           </div>
         ))}
       </div>
@@ -143,11 +174,7 @@ export function ScoringForm({
       )}
 
       <div className="flex gap-3">
-        <Button
-          variant="outline"
-          onClick={saveDraft}
-          disabled={saving || submitting}
-        >
+        <Button variant="outline" onClick={saveDraft} disabled={saving || submitting}>
           {saving ? "Saving..." : saved ? "Saved ✓" : "Save Draft"}
         </Button>
         <Button
@@ -170,7 +197,7 @@ export function ScoringForm({
 function ScoreDisplay({ score }: { score: number | undefined }) {
   if (!score) return <span className="text-gray-300 text-sm">—</span>;
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-2 flex-shrink-0">
       <span className="w-8 h-8 rounded-lg bg-purple-600 text-white text-sm font-bold flex items-center justify-center">
         {score}
       </span>

@@ -10,7 +10,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
   if (!person) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { evaluationId } = await params;
-  const { scores } = await req.json() as { scores: { criterionId: string; score: number }[] };
+  const { scores } = await req.json() as { scores: { criterionId: string; score: number; comment?: string | null }[] };
 
   const evaluation = await prisma.evaluation.findUnique({
     where: { id: evaluationId },
@@ -34,8 +34,8 @@ export async function PUT(req: NextRequest, { params }: Params) {
     scores.map((s) =>
       prisma.evaluationScore.upsert({
         where: { evaluationId_criterionId: { evaluationId, criterionId: s.criterionId } },
-        create: { evaluationId, criterionId: s.criterionId, score: s.score },
-        update: { score: s.score },
+        create: { evaluationId, criterionId: s.criterionId, score: s.score, comment: s.comment ?? null },
+        update: { score: s.score, comment: s.comment ?? null },
       })
     )
   );

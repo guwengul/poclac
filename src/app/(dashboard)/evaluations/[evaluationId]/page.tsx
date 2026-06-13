@@ -61,7 +61,7 @@ export default async function EvaluationPage({
           evaluationId={evaluation.id}
           evaluatee={evaluation.evaluatee}
           criteria={criteria}
-          existingScores={evaluation.scores.map((s) => ({ criterionId: s.criterionId, score: s.score }))}
+          existingScores={evaluation.scores.map((s) => ({ criterionId: s.criterionId, score: s.score, comment: s.comment }))}
           isSubmitted={evaluation.status === "SUBMITTED"}
         />
       )}
