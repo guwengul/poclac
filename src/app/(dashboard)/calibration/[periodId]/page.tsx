@@ -7,14 +7,15 @@ import { CheckCircle2, Circle } from "lucide-react";
 const ROLE_LABELS: Record<string, string> = { PO: "Product Owner", CL: "Chapter Lead", AC: "Agile Coach" };
 const ROLES = ["PO", "CL", "AC"] as const;
 
-// Returns map of personId → "⭐⭐" | "⭐" | "" per tribe
 function calcStars(
-  people: { id: string; finalScore: number }[]
+  people: { id: string; finalScore: number }[],
+  highPct: number,
+  distPct: number,
 ): Map<string, string> {
   const sorted = [...people].sort((a, b) => b.finalScore - a.finalScore);
   const n = sorted.length;
-  const highCount = Math.floor(n * 0.1);
-  const distCount = Math.floor(n * 0.1);
+  const highCount = Math.floor(n * highPct);
+  const distCount = Math.floor(n * distPct);
   const map = new Map<string, string>();
   sorted.forEach((p, i) => {
     if (i < highCount) map.set(p.id, "⭐⭐");
@@ -45,7 +46,7 @@ export default async function CalibrationPeriodPage({
 
   const visibleTribeIds = tribePeriodsVisible.map(tp => tp.tribeId);
 
-  const [evaluatees, allEvaluations, finalScores, criteria] = await Promise.all([
+  const [evaluatees, allEvaluations, finalScores, criteria, distinctionConfig] = await Promise.all([
     prisma.person.findMany({
       where: {
         evaluateeAssignments: { some: { periodId } },
@@ -74,6 +75,7 @@ export default async function CalibrationPeriodPage({
       select: { evaluateeId: true, finalScore: true },
     }),
     prisma.criterion.findMany({ where: { isActive: true }, orderBy: { code: "asc" } }),
+    prisma.distinctionConfig.findUnique({ where: { periodId } }),
   ]);
 
   const evaluateeIds = new Set(evaluatees.map(e => e.id));
@@ -95,7 +97,7 @@ export default async function CalibrationPeriodPage({
         return tribeId === tp.tribeId && finalScoreMap.has(p.id);
       })
       .map(p => ({ id: p.id, finalScore: finalScoreMap.get(p.id)! }));
-    const stars = calcStars(tribeWithScores);
+    const stars = calcStars(tribeWithScores, distinctionConfig?.highPct ?? 0.1, distinctionConfig?.distPct ?? 0.1);
     stars.forEach((v, k) => starMap.set(k, v));
   }
 

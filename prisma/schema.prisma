@@ -178,6 +178,7 @@ model Period {
   finalScores          FinalScore[]
   distinctions         Distinction[]
   tribePeriods         TribePeriod[]
+  distinctionConfig    DistinctionConfig?
 }
 
 // Per-tribe participation in a global period
@@ -317,6 +318,15 @@ model FinalScore {
   lockedBy  Person? @relation("LockedByTL", fields: [lockedById], references: [id])
 
   @@unique([periodId, evaluateeId])
+}
+
+model DistinctionConfig {
+  id       String @id @default(cuid())
+  periodId String @unique
+  highPct  Float  @default(0.1)
+  distPct  Float  @default(0.1)
+
+  period Period @relation(fields: [periodId], references: [id])
 }
 
 // ─── Distinction ──────────────────────────────────────────────────────────────
